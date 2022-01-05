@@ -13,7 +13,6 @@
   (name oxen)
   (synopsis "OCaml implementation of the XCS learning classifier system")
   (depends
-    (bitv (>= 1.6))
     (dune :build)
   )
 )

@@ -8,7 +8,6 @@ license: "ISC"
 homepage: "https://github.com/darioteixeira/oxen"
 bug-reports: "https://github.com/darioteixeira/oxen/issues"
 depends: [
-  "bitv" {>= "1.6"}
   "dune" {>= "2.9" & build}
   "odoc" {with-doc}
 ]

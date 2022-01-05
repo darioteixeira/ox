@@ -9,7 +9,6 @@ bug-reports: "https://github.com/darioteixeira/oxen/issues"
 depends: [
   "base-threads" {= "base"}
   "base-unix" {= "base"}
-  "bitv" {= "1.6"}
   "dune" {= "2.9.1"}
   "ocaml" {= "4.13.1"}
 ]
