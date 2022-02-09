@@ -62,7 +62,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   let state_t = Repr.ref ready_for_t
 
-  let init config = ref @@ Ready_for_environment {
+  let create config = ref @@ Ready_for_environment {
     config;
     current_time = 0;
     population = { set = Classifier_set.empty; numerosity = 0 };

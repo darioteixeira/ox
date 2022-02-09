@@ -3,7 +3,7 @@ module type S = sig
 
   type state [@@deriving repr]
 
-  val init :
+  val create :
     Config.t ->
     state
 
