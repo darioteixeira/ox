@@ -58,9 +58,9 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     | Ready_for_feedback of ready_for_feedback
     [@@deriving repr]
 
-  type state = ready_for ref
+  type t = ready_for ref
 
-  let state_t = Repr.ref ready_for_t
+  let t = Repr.ref ready_for_t
 
   let create config = ref @@ Ready_for_environment {
     config;
@@ -427,10 +427,10 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (************************************************************************************************)
 
   (* First part (lines 3-8) of routine [RUN EXPERIMENT] from page 260. *)
-  let provide_environment state environment =
-    match !state with
+  let provide_environment learner environment =
+    match !learner with
     | Ready_for_feedback _ ->
-        invalid_arg "Learner.provide_environment: This state must be used with Learner.provide_feedback"
+        invalid_arg "Learner.provide_environment: This learner must be used with Learner.provide_feedback"
     | Ready_for_environment { config; current_time; population; previous } ->
         let Config.{ exploration_probability; _ } = config in
         let (population, match_set) = generate_match_set ~config ~current_time population environment in
@@ -442,14 +442,14 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
           | false -> Lazy.force best_action_with_prediction
         in
         let action_set = generate_action_set action match_set in
-        state := Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous };
+        learner := Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous };
         action
 
   (* Second part (lines 9-22) of routine [RUN EXPERIMENT] from page 260. *)
-  let provide_feedback ~reward ~is_final_step state =
-    match !state with
+  let provide_feedback ~reward ~is_final_step learner =
+    match !learner with
     | Ready_for_environment _ ->
-        invalid_arg "Learner.provide_feedback: This state must be used with Learner.provide_environment"
+        invalid_arg "Learner.provide_feedback: This learner must be used with Learner.provide_environment"
     | Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous } ->
         let Config.{ discount_factor; _ } = config in
         let population =
@@ -476,5 +476,5 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
               in
               (population, Some previous)
         in
-        state := Ready_for_environment { config; current_time; population; previous }
+        learner := Ready_for_environment { config; current_time; population; previous }
 end
