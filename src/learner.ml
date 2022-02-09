@@ -62,6 +62,10 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   let t = Repr.ref ready_for_t
 
+  exception Expected_environment
+
+  exception Expected_feedback
+
   let create config = ref @@ Ready_for_environment {
     config;
     current_time = 0;
@@ -430,7 +434,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   let provide_environment learner environment =
     match !learner with
     | Ready_for_feedback _ ->
-        invalid_arg "Learner.provide_environment: This learner must be used with Learner.provide_feedback"
+        raise Expected_feedback
     | Ready_for_environment { config; current_time; population; previous } ->
         let Config.{ exploration_probability; _ } = config in
         let (population, match_set) = generate_match_set ~config ~current_time population environment in
@@ -449,7 +453,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   let provide_feedback ~reward ~is_final_step learner =
     match !learner with
     | Ready_for_environment _ ->
-        invalid_arg "Learner.provide_feedback: This learner must be used with Learner.provide_environment"
+        raise Expected_environment
     | Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous } ->
         let Config.{ discount_factor; _ } = config in
         let population =
