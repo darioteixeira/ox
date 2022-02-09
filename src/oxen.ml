@@ -17,27 +17,31 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   module Classifier = Classifier.Make (Action)
 
-  module Classifier_set = Set.Make (Classifier)
-
   module Classifier_map = Map.Make (Classifier)
+
+  module Classifier_set = struct
+    include Set.Make (Classifier)
+
+    let t = Repr.map (Repr.seq Classifier.t) of_seq to_seq
+  end
 
   type population = {
     set : Classifier_set.t;
     numerosity : int; (* Note that numerosity may be different from set cardinality *)
-  }
+  } [@@deriving repr]
 
   type previous = {
     previous_environment : bool array;
     previous_action_set : Classifier_set.t;
     previous_reward : float;
-  }
+  } [@@deriving repr]
 
   type ready_for_environment = {
     config : Config.t;
     current_time : int;
     population : population;
     previous : previous option;
-  }
+  } [@@deriving repr]
 
   type ready_for_feedback = {
     config : Config.t;
@@ -47,13 +51,16 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     action_set : Classifier_set.t;
     best_action_with_prediction : (Action.t * float) Lazy.t;
     previous : previous option;
-  }
+  } [@@deriving repr]
 
   type ready_for =
     | Ready_for_environment of ready_for_environment
     | Ready_for_feedback of ready_for_feedback
+    [@@deriving repr]
 
   type state = ready_for ref
+
+  let state_t = Repr.ref ready_for_t
 
   let init config = ref @@ Ready_for_environment {
     config;

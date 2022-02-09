@@ -3,7 +3,7 @@ type classifier_defaults = {
   initial_prediction_error : float;
   initial_fitness : float;
   wildcard_probability : float;
-}
+} [@@deriving repr]
 
 type t = {
   max_population_size : int;
@@ -24,4 +24,4 @@ type t = {
   do_offspring_subsumption : bool;
   do_action_set_subsumption : bool;
   classifier_defaults : classifier_defaults;
-}
+} [@@deriving repr]

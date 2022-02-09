@@ -14,5 +14,7 @@
   (synopsis "OCaml implementation of the XCS learning classifier system")
   (depends
     (dune :build)
+    (repr (>= 0.6))
+    (ppx_repr (>= 0.6))
   )
 )

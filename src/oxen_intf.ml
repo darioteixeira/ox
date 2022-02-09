@@ -1,7 +1,7 @@
 module type S = sig
   module Action : Action_intf.S
 
-  type state
+  type state [@@deriving repr]
 
   val init :
     Config.t ->

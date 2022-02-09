@@ -5,13 +5,14 @@ type trilean =
   | True
   | False
   | Wildcard
+  [@@deriving repr]
 
 type environment = bool array
 
 type t = {
   trileans : trilean array;
   genericity : int; (* Cached computed value: number of wildcards in the array of trileans. *)
-}
+} [@@deriving repr]
 
 let char_of_trilean = function
   | True -> '1'

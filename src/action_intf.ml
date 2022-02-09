@@ -1,5 +1,5 @@
 module type S = sig
-  type t
+  type t [@@deriving repr]
 
   val equal : t -> t -> bool
   val compare : t -> t -> int

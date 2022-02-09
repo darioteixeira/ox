@@ -1,4 +1,6 @@
 (library
   (name oxen)
   (public_name oxen)
+  (libraries repr)
+  (preprocess (pps ppx_repr))
 )

@@ -1,7 +1,7 @@
 module type S = sig
   module Action : Action_intf.S
 
-  type identifier
+  type identifier [@@deriving repr]
 
   type t = private {
     identifier : identifier;
@@ -26,7 +26,7 @@ module type S = sig
     (** Parameter [n]: Number of micro-classifiers this classifier represents. *)
     mutable accuracy : float;
     (** Parameter [k]: Accuracy of the classifier. Note that this is a cached computed quantity based on the prediction error [ε]. *)
-  }
+  } [@@deriving repr]
 
   (** Creates a fresh classifier with the provided parameters.
   *)

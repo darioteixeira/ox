@@ -3,7 +3,7 @@ include Classifier_intf
 module Make (Action : Action_intf.S) : S with module Action = Action = struct
   module Action = Action
 
-  type identifier = string
+  type identifier = string [@@deriving repr]
 
   type t = {
     identifier : identifier;
@@ -17,7 +17,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     mutable avg_action_set_size : float;
     mutable numerosity : int;
     mutable accuracy : float;
-  }
+  } [@@deriving repr]
 
   let make_identifier ~condition ~action =
     Printf.sprintf "%s-%s" (Condition.to_string condition) (Action.to_string action)

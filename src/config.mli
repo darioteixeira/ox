@@ -12,7 +12,7 @@ type classifier_defaults = {
   (** Parameter [P_#]: This is the probability of using a wildcard (also known as a "don't care"
       and usually represented by the [#] symbol) in one attribute in the condition string when covering.
       (Usually around 0.33) *)
-}
+} [@@deriving repr]
 
 type t = {
   max_population_size : int;
@@ -80,4 +80,4 @@ type t = {
       action sets are to be tested for subsuming classifiers. *)
   classifier_defaults : classifier_defaults;
   (** Defaults for new classifiers. *)
-}
+} [@@deriving repr]
