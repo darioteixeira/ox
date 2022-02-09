@@ -1,3 +1,5 @@
+(** This module declares the various parameters used to configure the {!Learner}. *)
+
 type classifier_defaults = {
   initial_prediction : float;
   (** Parameter [p_I]: Initial value for the prediction parameter [p] in new classifiers.
