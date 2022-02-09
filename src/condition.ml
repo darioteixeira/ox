@@ -30,6 +30,10 @@ let compute_genericity trileans =
     | _ -> acc
   )
 
+let of_array trileans =
+  let genericity = compute_genericity trileans in
+  { trileans; genericity }
+
 let to_string { trileans; _ } =
   String.init (Array.length trileans) ~f:(fun idx -> char_of_trilean trileans.( idx ))
 

@@ -7,6 +7,9 @@ type environment = bool array
 (** A [condition] {!t} is essentially a {!trilean} vector. *)
 type t [@@deriving repr]
 
+val of_array : trilean array -> t
+(** Creates a {!t} directly from the given array of trileans. *)
+
 val to_string : t -> string
 (** Returns a string representation of the given condition. *)
 
