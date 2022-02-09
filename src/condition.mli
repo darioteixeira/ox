@@ -19,7 +19,8 @@ val matches : t -> environment -> bool
 val is_more_general : than:t -> t -> bool
 (** Is the given condition more general than the given reference condition?
     A condition is more general if it has higher genericity (i.e. a higher
-    number of wildcards) and for all element. *)
+    number of wildcards) and the conditions have identical elements in all
+    positions where neither has a wildcard. *)
 
 val make_from_environment : wildcard_probability:float -> environment -> t
 (** Create a {!t} using the provided {!environment} as template.
