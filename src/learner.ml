@@ -241,7 +241,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   (* Routine [RUN GA] from page 265. *)
   let run_genetic_algorithm ~config ~current_time action_set population environment =
-    Log.debug (fun m -> m "run_genetic_algorithm");
+    Log.debug (fun m -> m "run_genetic_algorithm: #action_set=%d" (Classifier_set.cardinal action_set));
     assert (Classifier_set.cardinal action_set <> 0);
     let Config.{
       prediction_error_threshold; age_threshold; crossover_probability; mutation_probability;
@@ -273,6 +273,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
         let (child1, child2) =
           match (Random.float 1. < crossover_probability) && not (Classifier.equal parent1 parent2) with
           | true ->
+              Log.debug (fun m -> m "run_genetic_algorithm: Applying crossover between %s and %s" (Classifier.identifier parent1) (Classifier.identifier parent2));
               let (condition1, condition2) = Condition.crossover_with_mutation ~mutation_probability c1 c2 environment in
               let prediction = (p1 +. p2) /. 2. in
               let prediction_error = (pe1 +. pe2) /. 2. in
@@ -281,6 +282,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
               let child2 = Classifier.clone ~condition:condition2 ~prediction ~prediction_error ~fitness ~numerosity:1 parent2 in
               (child1, child2)
           | false ->
+              Log.debug (fun m -> m "run_genetic_algorithm: Cloning %s and %s" (Classifier.identifier parent1) (Classifier.identifier parent2));
               let condition1 = Condition.clone_with_mutation ~mutation_probability c1 environment in
               let condition2 = Condition.clone_with_mutation ~mutation_probability c2 environment in
               let child1 = Classifier.clone ~condition:condition1 ~fitness:(offspring_fitness_multiplier *. f1) ~numerosity:1 parent1 in
@@ -307,7 +309,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   let generate_covering_classifier =
     let all_actions = Action_set.of_list Action.all in
     fun ~classifier_initialization ~current_time used_actions environment ->
-      Log.debug (fun m -> m "generate_covering_classifier #used_actions=%d" (Action_set.cardinal used_actions));
+      Log.debug (fun m -> m "generate_covering_classifier: #used_actions=%d" (Action_set.cardinal used_actions));
       let Config.{ initial_prediction; initial_prediction_error; initial_fitness; wildcard_probability } = classifier_initialization in
       let unused_actions = Action_set.diff all_actions used_actions in
       let action = Action_set.random_exn unused_actions in
@@ -441,7 +443,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     Classifier.update ~fitness classifier
 
   let update_action_set ~config ~payoff action_set population =
-    Log.debug (fun m -> m "update_action_set: #action_set=%d" (Classifier_set.cardinal action_set));
+    Log.debug (fun m -> m "update_action_set: payoff=%6.1f, #action_set=%d" payoff (Classifier_set.cardinal action_set));
     let Config.{ subsumption_threshold; prediction_error_threshold; do_action_set_subsumption; _ } = config in
     let action_set_numerosity = Classifier_set.fold action_set ~init:0 ~f:(fun Classifier.{ numerosity; _} sum -> sum + numerosity) in
     Classifier_set.iter action_set ~f:(update_classifier_accuracy ~config ~payoff ~action_set_numerosity);
@@ -471,7 +473,10 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     | Ready_for_feedback _ ->
         raise Expected_feedback
     | Ready_for_environment { config; current_time; population; previous } ->
-        Log.debug (fun m -> m "provide_environment: current_time=%d, #population=%d" current_time (Classifier_set.cardinal population.set));
+        Log.debug (fun m ->
+          m "provide_environment: current_time=%d, #population=%d, numerosity=%d"
+          current_time (Classifier_set.cardinal population.set) population.numerosity
+        );
         let exploration_probability = Option.value ~default:Config.(config.exploration_probability) exploration_probability in
         let (population, match_set) = generate_match_set ~config ~current_time population environment in
         let (num_predictions, predictions) = generate_predictions match_set in
@@ -495,12 +500,15 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   (* Second part (lines 9-22) of routine [RUN EXPERIMENT] from page 260. *)
   let provide_feedback ~reward ~is_final_step learner =
-    Log.debug (fun m -> m "provide_feedback");
+    Log.debug (fun m -> m "provide_feedback: reward=%2.1f, is_final_step=%B" reward is_final_step);
     match !learner with
     | Ready_for_environment _ ->
         raise Expected_environment
     | Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous } ->
-        Log.debug (fun m -> m "provide_feedback: current_time=%d, #population=%d" current_time (Classifier_set.cardinal population.set));
+        Log.debug (fun m ->
+          m "provide_feedback: current_time=%d, #population=%d, numerosity=%d"
+          current_time (Classifier_set.cardinal population.set) population.numerosity
+        );
         let Config.{ discount_factor; _ } = config in
         let population =
           match previous with
