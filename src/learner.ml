@@ -160,6 +160,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
           then vote *. avg_population_fitness /. avg_fitness
           else vote
         in
+        let victims = select_via_roulette_wheel ~quantity:excess ~get_weight:culling_vote set in
         let remove_classifier { set; numerosity } = function
           | Classifier.{ numerosity = 1; _ } as victim ->
               { set = Classifier_set.remove victim set; numerosity = numerosity - 1 }
@@ -167,7 +168,6 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
               Classifier.update ~numerosity:(n - 1) victim;
               { set; numerosity = numerosity - 1 }
         in
-        let victims = select_via_roulette_wheel ~quantity:excess ~get_weight:culling_vote set in
         List.fold_left victims ~init:population ~f:remove_classifier
 
   (************************************************************************************************)
