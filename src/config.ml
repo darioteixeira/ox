@@ -1,4 +1,4 @@
-type classifier_defaults = {
+type classifier_initialization = {
   initial_prediction : float;
   initial_prediction_error : float;
   initial_fitness : float;
@@ -23,5 +23,5 @@ type t = {
   min_actions : int;
   do_offspring_subsumption : bool;
   do_action_set_subsumption : bool;
-  classifier_defaults : classifier_defaults;
+  classifier_initialization : classifier_initialization;
 } [@@deriving repr]

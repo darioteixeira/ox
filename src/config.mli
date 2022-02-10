@@ -1,6 +1,6 @@
 (** This module declares the various parameters used to configure the {!Learner}. *)
 
-type classifier_defaults = {
+type classifier_initialization = {
   initial_prediction : float;
   (** Parameter [p_I]: Initial value for the prediction parameter [p] in new classifiers.
       (Usually 0) *)
@@ -80,6 +80,6 @@ type t = {
   do_action_set_subsumption : bool;
   (** Parameter [doActionSetSubsumption]: Boolean that specifies whether
       action sets are to be tested for subsuming classifiers. *)
-  classifier_defaults : classifier_defaults;
-  (** Defaults for new classifiers. *)
+  classifier_initialization : classifier_initialization;
+  (** Initial parameters for new classifiers. *)
 } [@@deriving repr]

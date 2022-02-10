@@ -290,8 +290,8 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (* Routine [GENERATE COVERING CLASSIFIER] from page 261. *)
   let generate_covering_classifier =
     let all_actions = Action_set.of_list Action.all in
-    fun ~classifier_defaults ~current_time used_actions environment ->
-      let Config.{ initial_prediction; initial_prediction_error; initial_fitness; wildcard_probability } = classifier_defaults in
+    fun ~classifier_initialization ~current_time used_actions environment ->
+      let Config.{ initial_prediction; initial_prediction_error; initial_fitness; wildcard_probability } = classifier_initialization in
       let unused_actions = Action_set.diff all_actions used_actions in
       let action = Action_set.random_exn unused_actions in
       let condition = Condition.make_from_environment ~wildcard_probability environment in
@@ -306,7 +306,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   (* Routine [GENERATE MATCH SET] from page 260. *)
   let generate_match_set ~config ~current_time population environment =
-    let Config.{ min_actions; classifier_defaults; _ } = config in
+    let Config.{ min_actions; classifier_initialization; _ } = config in
     let rec loop population =
       let (match_set, used_actions) =
         let process_classifier (Classifier.{ condition; action; _ } as cl) (match_set, used_actions) =
@@ -320,7 +320,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
       then
         (population, match_set)
       else
-        let new_cl = generate_covering_classifier ~classifier_defaults ~current_time used_actions environment in
+        let new_cl = generate_covering_classifier ~classifier_initialization ~current_time used_actions environment in
         let population =
           population
           |> insert_into_population ~check_for_existence:false new_cl
