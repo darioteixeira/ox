@@ -466,14 +466,14 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     }
 
   (* First part (lines 3-8) of routine [RUN EXPERIMENT] from page 260. *)
-  let provide_environment learner environment =
+  let provide_environment ?exploration_probability learner environment =
     Log.debug (fun m -> m "provide_environment: environment=%a" pp_environment environment);
     match !learner with
     | Ready_for_feedback _ ->
         raise Expected_feedback
     | Ready_for_environment { config; current_time; population; previous } ->
         Log.debug (fun m -> m "provide_environment: current_time=%d, #population=%d" current_time (Classifier_set.cardinal population.set));
-        let Config.{ exploration_probability; _ } = config in
+        let exploration_probability = Option.value ~default:Config.(config.exploration_probability) exploration_probability in
         let (population, match_set) = generate_match_set ~config ~current_time population environment in
         let (num_predictions, predictions) = generate_predictions match_set in
         let best_action_with_prediction = lazy (select_best_action predictions) in

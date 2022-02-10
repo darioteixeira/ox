@@ -25,7 +25,7 @@ module type S = sig
   val create : Config.t -> t
   (** Create a new learner using the given {!Config}. *)
 
-  val provide_environment : t -> bool array -> Action.t
+  val provide_environment : ?exploration_probability:float -> t -> bool array -> Action.t
   (** [provide_environment learner environment] feeds the current environment to the learner,
       returning the learner's recommended {!Action}. Note that the learner's internal state
       is modified! (Raises {!Expected_feedback} if the learner expects an invocation of
