@@ -226,12 +226,12 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     Log.debug (fun m -> m "insert_or_subsume");
     if does_subsume ~subsumption_threshold ~prediction_error_threshold ~subsumer:parent1 ~subsumee:child
     then
-      let () = Classifier.(update ~numerosity:(parent1.numerosity + 1) parent1) in
-      { population with numerosity = population.numerosity + 1 }
+      let () = Classifier.(update ~numerosity:(parent1.numerosity + child.numerosity) parent1) in
+      { population with numerosity = population.numerosity + child.numerosity }
     else if does_subsume ~subsumption_threshold ~prediction_error_threshold ~subsumer:parent2 ~subsumee:child
     then
-      let () = Classifier.(update ~numerosity:(parent2.numerosity + 1) parent2) in
-      { population with numerosity = population.numerosity + 1 }
+      let () = Classifier.(update ~numerosity:(parent2.numerosity + child.numerosity) parent2) in
+      { population with numerosity = population.numerosity + child.numerosity }
     else
       insert_into_population child population
 
