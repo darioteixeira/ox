@@ -346,11 +346,11 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
       Classifier_set.fold match_set ~init:Action_map.empty ~f:process_classifier
     in
     let normalise_raw_prediction ~key:action ~data:(acc_prediction, acc_fitness) (num_predictions, predictions) =
-      (* We don't want to divide by zero. Besides, when the accumulated fitness
-         is zero the accumulated prediction is also zero and can be discarded anyway. *)
+      (* We don't want to divide by zero. Besides, when the accumulated
+         fitness is zero the accumulated prediction is also zero. *)
       match acc_fitness with
       | 0. ->
-          (num_predictions, predictions)
+          (num_predictions + 1, (action, 0.) :: predictions)
       | acc_fitness ->
           let normalised_prediction = acc_prediction /. acc_fitness in
           (num_predictions + 1, (action, normalised_prediction) :: predictions)
