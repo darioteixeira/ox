@@ -277,14 +277,14 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
               let prediction = (p1 +. p2) /. 2. in
               let prediction_error = (pe1 +. pe2) /. 2. in
               let fitness = offspring_fitness_multiplier *. (f1 +. f2) /. 2. in
-              let child1 = Classifier.clone ~condition:condition1 ~prediction ~prediction_error ~fitness parent1 in
-              let child2 = Classifier.clone ~condition:condition2 ~prediction ~prediction_error ~fitness parent2 in
+              let child1 = Classifier.clone ~condition:condition1 ~prediction ~prediction_error ~fitness ~numerosity:1 parent1 in
+              let child2 = Classifier.clone ~condition:condition2 ~prediction ~prediction_error ~fitness ~numerosity:1 parent2 in
               (child1, child2)
           | false ->
               let condition1 = Condition.clone_with_mutation ~mutation_probability c1 environment in
               let condition2 = Condition.clone_with_mutation ~mutation_probability c2 environment in
-              let child1 = Classifier.clone ~condition:condition1 ~fitness:(offspring_fitness_multiplier *. f1) parent1 in
-              let child2 = Classifier.clone ~condition:condition2 ~fitness:(offspring_fitness_multiplier *. f2) parent2 in
+              let child1 = Classifier.clone ~condition:condition1 ~fitness:(offspring_fitness_multiplier *. f1) ~numerosity:1 parent1 in
+              let child2 = Classifier.clone ~condition:condition2 ~fitness:(offspring_fitness_multiplier *. f2) ~numerosity:1 parent2 in
               (child1, child2)
         in
         match do_offspring_subsumption with
