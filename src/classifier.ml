@@ -73,6 +73,9 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   let equal cl1 cl2 =
     compare cl1 cl2 = 0
 
+  let identifier { identifier; _ } =
+    identifier
+
   let fitness { fitness; _ } =
     fitness
     

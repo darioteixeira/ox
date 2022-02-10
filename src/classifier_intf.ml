@@ -78,6 +78,8 @@ module type S = sig
 
   val equal : t -> t -> bool
 
+  val identifier : t -> string
+
   val fitness : t -> float
 
   val numerosity : t -> int

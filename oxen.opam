@@ -9,6 +9,8 @@ homepage: "https://github.com/darioteixeira/oxen"
 bug-reports: "https://github.com/darioteixeira/oxen/issues"
 depends: [
   "dune" {>= "2.9" & build}
+  "fmt" {>= "0.9.0"}
+  "logs" {>= "0.7.0"}
   "repr" {>= "0.6"}
   "ppx_repr" {>= "0.6"}
   "odoc" {with-doc}

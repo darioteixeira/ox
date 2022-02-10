@@ -18,6 +18,10 @@ module type S = sig
   (** Raised if {!provide_environment} is invoked on a learner which is expecting
       an invocation of {!provide_feedback} instead. *)
 
+  val logs_src : Logs.src
+  (** You can use this to control the logging behaviour of the learner.
+      (Please consult the documentation of the library for details.) *)
+
   val create : Config.t -> t
   (** Create a new learner using the given {!Config}. *)
 
