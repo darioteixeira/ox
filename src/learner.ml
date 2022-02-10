@@ -127,18 +127,17 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (************************************************************************************************)
 
   (* Routine [INSERT IN POPULATION] from page 267. *)
-  let insert_into_population ~check_for_existence (Classifier.{ numerosity = n1; _ } as classifier) { set; numerosity } =
-    Log.debug (fun m -> m "insert_into_population: check_for_existence=%B, classifier=%s" check_for_existence (Classifier.identifier classifier));
-    match check_for_existence with
-    | false ->
+  let insert_into_population (Classifier.{ numerosity = n1; _ } as classifier) { set; numerosity } =
+    Log.debug (fun m ->
+      m "insert_into_population: classifier=%s, #population=%d, numerosity=%d"
+      (Classifier.identifier classifier) (Classifier_set.cardinal set) numerosity
+    );
+    match Classifier_set.find_opt classifier set with
+    | Some (Classifier.{ numerosity = n2; _ } as existing) ->
+        Classifier.update ~numerosity:(n1 + n2) existing;
+        { set; numerosity = numerosity + n1 }
+    | None ->
         { set = Classifier_set.add classifier set; numerosity = numerosity + n1 }
-    | true ->
-        match Classifier_set.find_opt classifier set with
-        | Some (Classifier.{ numerosity = n2; _ } as existing) ->
-            Classifier.update ~numerosity:(n1 + n2) existing;
-            { set; numerosity = numerosity + n1 }
-        | None ->
-            { set = Classifier_set.add classifier set; numerosity = numerosity + n1 }
 
   (* Routine [DELETE FROM POPULATION] from page 268. *)
   let cull_population ~config ({ set; numerosity } as population) =
@@ -234,7 +233,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
       let () = Classifier.(update ~numerosity:(parent2.numerosity + 1) parent2) in
       { population with numerosity = population.numerosity + 1 }
     else
-      insert_into_population ~check_for_existence:true child population
+      insert_into_population child population
 
   (************************************************************************************************)
   (* Genetic algorithm.                                                                           *)
@@ -296,8 +295,8 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
             |> cull_population ~config
         | false ->
             population
-            |> insert_into_population ~check_for_existence:true child1
-            |> insert_into_population ~check_for_existence:true child2
+            |> insert_into_population child1
+            |> insert_into_population child2
             |> cull_population ~config
 
   (************************************************************************************************)
@@ -342,7 +341,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
         let new_cl = generate_covering_classifier ~classifier_initialization ~current_time used_actions environment in
         let population =
           population
-          |> insert_into_population ~check_for_existence:false new_cl
+          |> insert_into_population new_cl
           |> cull_population ~config
         in
         loop population
