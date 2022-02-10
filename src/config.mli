@@ -83,3 +83,7 @@ type t = {
   classifier_initialization : classifier_initialization;
   (** Initial parameters for new classifiers. *)
 } [@@deriving repr]
+
+val default_classifier_initialization : classifier_initialization
+
+val default : t

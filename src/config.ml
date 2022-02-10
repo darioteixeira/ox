@@ -25,3 +25,31 @@ type t = {
   do_action_set_subsumption : bool;
   classifier_initialization : classifier_initialization;
 } [@@deriving repr]
+
+let default_classifier_initialization = {
+  initial_prediction = 0.;
+  initial_prediction_error = 0.;
+  initial_fitness = 0.;
+  wildcard_probability = 0.33;
+}
+
+let default = {
+  max_population_size = 1000;
+  discount_factor = 0.71;
+  learning_rate = 0.15;
+  accuracy_coefficient = 0.1;
+  accuracy_power = 5.;
+  prediction_error_threshold = 1.;
+  age_threshold = 30.;
+  crossover_probability = 0.75;
+  offspring_fitness_multiplier = 0.1;
+  mutation_probability = 0.02;
+  deletion_threshold = 20;
+  fitness_threshold = 0.1;
+  subsumption_threshold = 20;
+  exploration_probability = 0.5;
+  min_actions = 2;
+  do_offspring_subsumption = true;
+  do_action_set_subsumption = true;
+  classifier_initialization = default_classifier_initialization;
+}
