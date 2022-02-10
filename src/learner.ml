@@ -249,6 +249,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
         Classifier_set.iter action_set ~f:(Classifier.update ~last_occurrence:current_time);
         let (parent1, parent2) =
           match select_via_roulette_wheel ~quantity:2 ~get_weight:Classifier.fitness action_set with
+          | [ parent1 ] -> (parent1, parent1)
           | [ parent1; parent2 ] -> (parent1, parent2)
           | _ -> assert false
         in
