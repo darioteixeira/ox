@@ -447,7 +447,15 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
           | false -> Lazy.force best_action_with_prediction
         in
         let action_set = generate_action_set action match_set in
-        learner := Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous };
+        learner := Ready_for_feedback {
+          config;
+          current_time;
+          population;
+          environment;
+          action_set;
+          best_action_with_prediction;
+          previous;
+        };
         action
 
   (* Second part (lines 9-22) of routine [RUN EXPERIMENT] from page 260. *)
@@ -481,5 +489,10 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
               in
               (population, Some previous)
         in
-        learner := Ready_for_environment { config; current_time; population; previous }
+        learner := Ready_for_environment {
+          config;
+          current_time = current_time + 1;
+          population;
+          previous;
+        }
 end
