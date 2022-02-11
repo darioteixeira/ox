@@ -457,7 +457,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (* [RUN EXPERIMENT].                                                                            *)
   (************************************************************************************************)
 
-  let create config =
+  let create ~config =
     Log.debug (fun m -> m "create");
     ref @@ Ready_for_environment {
       config;
@@ -466,8 +466,16 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
       previous = None;
     }
 
+  let update_config ~config learner =
+    Log.debug (fun m -> m "update_config");
+    match !learner with
+    | Ready_for_feedback ready_for_feedback ->
+        learner := Ready_for_feedback { ready_for_feedback with config }
+    | Ready_for_environment ready_for_environment ->
+        learner := Ready_for_environment { ready_for_environment with config }
+
   (* First part (lines 3-8) of routine [RUN EXPERIMENT] from page 260. *)
-  let provide_environment ?exploration_probability learner environment =
+  let provide_environment learner environment =
     Log.debug (fun m -> m "provide_environment: environment=%a" pp_environment environment);
     match !learner with
     | Ready_for_feedback _ ->
@@ -477,12 +485,11 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
           m "provide_environment: current_time=%d, #population=%d, numerosity=%d"
           current_time (Classifier_set.cardinal population.set) population.numerosity
         );
-        let exploration_probability = Option.value ~default:Config.(config.exploration_probability) exploration_probability in
         let (population, match_set) = generate_match_set ~config ~current_time population environment in
         let (num_predictions, predictions) = generate_predictions match_set in
         let best_action_with_prediction = lazy (select_best_action predictions) in
         let (action, _prediction) =
-          match Random.float 1. < exploration_probability with
+          match Random.float 1. < Config.(config.exploration_probability) with
           | true -> select_random_action ~num_predictions predictions
           | false -> Lazy.force best_action_with_prediction
         in

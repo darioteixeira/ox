@@ -22,10 +22,13 @@ module type S = sig
   (** You can use this to control the logging behaviour of the learner.
       (Please consult the documentation of the library for details.) *)
 
-  val create : Config.t -> t
-  (** Create a new learner using the given {!Config}. *)
+  val create : config:Config.t -> t
+  (** Create a new learner using the given {!Config.t}. *)
 
-  val provide_environment : ?exploration_probability:float -> t -> bool array -> Action.t
+  val update_config : config:Config.t -> t -> unit
+  (** Updates the configuration of the given learner. *)
+
+  val provide_environment : t -> bool array -> Action.t
   (** [provide_environment learner environment] feeds the current environment to the learner,
       returning the learner's recommended {!Action}. Note that the learner's internal state
       is modified! (Raises {!Expected_feedback} if the learner expects an invocation of
