@@ -422,18 +422,17 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     let Classifier.{ experience; prediction; prediction_error; avg_action_set_size; _ } = classifier in
     let experience = experience + 1 in
     let experience' = float_of_int experience in
-    let action_set_numerosity' = float_of_int action_set_numerosity in
     let (prediction, prediction_error, avg_action_set_size) =
       match experience' < 1. /. learning_rate with
       | true ->
-          let prediction = prediction +. (payoff -. prediction) /. experience' in
           let prediction_error = prediction_error +. (Float.abs (payoff -. prediction) -. prediction_error) /. experience' in
-          let avg_action_set_size = avg_action_set_size +. (action_set_numerosity' -. avg_action_set_size) /. experience' in
+          let prediction = prediction +. (payoff -. prediction) /. experience' in
+          let avg_action_set_size = avg_action_set_size +. (action_set_numerosity -. avg_action_set_size) /. experience' in
           (prediction, prediction_error, avg_action_set_size)
       | false ->
-          let prediction = prediction +. learning_rate *. (payoff -. prediction) in
           let prediction_error = prediction_error +. learning_rate *. (Float.abs (payoff -. prediction) -. prediction_error) in
-          let avg_action_set_size = avg_action_set_size +. learning_rate *. (action_set_numerosity' -. avg_action_set_size) in
+          let prediction = prediction +. learning_rate *. (payoff -. prediction) in
+          let avg_action_set_size = avg_action_set_size +. learning_rate *. (action_set_numerosity -. avg_action_set_size) in
           (prediction, prediction_error, avg_action_set_size)
     in
     let accuracy =
@@ -452,9 +451,9 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   let update_action_set ~config ~payoff action_set population =
     Log.debug (fun m -> m "update_action_set: payoff=%6.1f, #action_set=%d" payoff (Classifier_set.cardinal action_set));
     let Config.{ subsumption_threshold; prediction_error_threshold; do_action_set_subsumption; _ } = config in
-    let action_set_numerosity = Classifier_set.fold action_set ~init:0 ~f:(fun Classifier.{ numerosity; _} sum -> sum + numerosity) in
+    let action_set_numerosity = float_of_int @@ Classifier_set.fold action_set ~init:0 ~f:(fun Classifier.{ numerosity; _} sum -> sum + numerosity) in
     Classifier_set.iter action_set ~f:(update_classifier_accuracy ~config ~payoff ~action_set_numerosity);
-    let total_accuracy = Classifier_set.fold action_set ~init:0. ~f:(fun Classifier.{ accuracy; _} sum -> sum +. accuracy) in
+    let total_accuracy = Classifier_set.fold action_set ~init:0. ~f:(fun Classifier.{ accuracy; numerosity; _} sum -> sum +. accuracy *. float_of_int numerosity) in
     Classifier_set.iter action_set ~f:(update_classifier_fitness ~config ~total_accuracy);
     match do_action_set_subsumption with
     | true -> subsume_in_action_set ~subsumption_threshold ~prediction_error_threshold action_set population
