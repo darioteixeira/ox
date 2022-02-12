@@ -24,7 +24,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   let make
     ~condition ~action ~prediction ~prediction_error ~fitness ~last_occurrence
-    ?(experience = 0) ?(avg_action_set_size = 1.) ?(numerosity = 1) ?(accuracy = 1.) () = {
+    ?(experience = 1) ?(avg_action_set_size = 1.) ?(numerosity = 1) ?(accuracy = 1.) () = {
       identifier = make_identifier ~condition ~action;
       condition;
       action;
