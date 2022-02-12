@@ -82,8 +82,10 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   module Log = (val Logs.src_log logs_src)
 
   (************************************************************************************************)
-  (* Miscelaneous utility functions.                                                              *)
+  (* Miscelaneous auxiliary values and functions.                                                 *)
   (************************************************************************************************)
+
+  let num_actions = List.length Action.all
 
   let select_via_roulette_wheel ~quantity ~get_weight set =
     Log.debug (fun m -> m "select_via_roulette_wheel: quantity=%d, #set=%d" quantity (Classifier_set.cardinal set));
@@ -327,6 +329,11 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   let generate_match_set ~config ~current_time population environment =
     Log.debug (fun m -> m "generate_match_set");
     let Config.{ min_actions; classifier_initialization; _ } = config in
+    let effective_min_actions =
+      match min_actions with
+      | All_actions -> num_actions
+      | Custom n -> n
+    in
     let rec loop population =
       let (match_set, used_actions) =
         let process_classifier (Classifier.{ condition; action; _ } as cl) (match_set, used_actions) =
@@ -336,17 +343,17 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
         in
         Classifier_set.fold ~init:(Classifier_set.empty, Action_set.empty) ~f:process_classifier population.set
       in
-      if Action_set.cardinal used_actions >= min_actions
-      then
-        (population, match_set)
-      else
-        let new_cl = generate_covering_classifier ~classifier_initialization ~current_time used_actions environment in
-        let population =
-          population
-          |> insert_into_population new_cl
-          |> cull_population ~config
-        in
-        loop population
+      match Action_set.cardinal used_actions >= effective_min_actions with
+      | true ->
+          (population, match_set)
+      | false ->
+          let new_cl = generate_covering_classifier ~classifier_initialization ~current_time used_actions environment in
+          let population =
+            population
+            |> insert_into_population new_cl
+            |> cull_population ~config
+          in
+          loop population
     in
     loop population
 

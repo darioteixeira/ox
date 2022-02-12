@@ -5,6 +5,11 @@ type classifier_initialization = {
   wildcard_probability : float;
 } [@@deriving repr]
 
+type min_actions =
+  | All_actions
+  | Custom of int
+  [@@deriving repr]
+
 type t = {
   max_population_size : int;
   discount_factor : float;
@@ -20,7 +25,7 @@ type t = {
   fitness_threshold : float;
   subsumption_threshold : int;
   exploration_probability : float;
-  min_actions : int;
+  min_actions : min_actions;
   do_offspring_subsumption : bool;
   do_action_set_subsumption : bool;
   classifier_initialization : classifier_initialization;
@@ -48,7 +53,7 @@ let default = {
   fitness_threshold = 0.1;
   subsumption_threshold = 20;
   exploration_probability = 0.5;
-  min_actions = 2;
+  min_actions = All_actions;
   do_offspring_subsumption = true;
   do_action_set_subsumption = true;
   classifier_initialization = default_classifier_initialization;

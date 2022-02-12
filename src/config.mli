@@ -16,6 +16,11 @@ type classifier_initialization = {
       (Usually around 0.33) *)
 } [@@deriving repr]
 
+type min_actions =
+  | All_actions
+  | Custom of int
+  [@@deriving repr]
+
 type t = {
   max_population_size : int;
   (** Parameter [N]: Maximum population sized in terms of micro-classifiers,
@@ -69,11 +74,12 @@ type t = {
   (** Parameter [p_explr]: During the selection of an action, this is the probability
       of going for exploration by choosing an action with random uniform probability.
       (Usually around 0.5) *)
-  min_actions : int;
+  min_actions : min_actions;
   (** Parameter [θ_mna]: This is the minimum number of actions that must be present
       in the match set [M]. If the number of actions is smaller than this minimum,
-      then covering will occur.
-      (Usually equal to the number of possible actions) *)
+      then covering will occur. If set to [All_actions], then the minimum is equal
+      to the number of possible actions (this is also the recommended default).
+      You may however set it to a smaller number using the [Custom] variant. *)
   do_offspring_subsumption : bool;
   (** Parameter [doGASubsumption]: Boolean that specifies whether offspring
       are to be tested for possible logical subsumption by their parents. *)
