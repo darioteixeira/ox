@@ -158,10 +158,10 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
         (* Routine [DELETION VOTE] from page 268. *)
         let culling_vote Classifier.{ fitness; experience; avg_action_set_size; numerosity; _ } =
           let numerosity = float_of_int numerosity in
-          let avg_fitness = fitness /. numerosity in
+          let scaled_fitness = fitness /. numerosity in
           let vote = avg_action_set_size *. numerosity in
-          if experience > deletion_threshold && avg_fitness < fitness_threshold *.avg_population_fitness
-          then vote *. avg_population_fitness /. avg_fitness
+          if experience > deletion_threshold && scaled_fitness < fitness_threshold *.avg_population_fitness
+          then vote *. avg_population_fitness /. scaled_fitness
           else vote
         in
         let victims = select_via_roulette_wheel ~quantity:excess ~get_weight:culling_vote set in
