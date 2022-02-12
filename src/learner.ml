@@ -85,7 +85,9 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (* Miscelaneous auxiliary values and functions.                                                 *)
   (************************************************************************************************)
 
-  let num_actions = List.length Action.all
+  let all_actions = Action_set.of_list Action.all
+
+  let num_actions = Action_set.cardinal all_actions
 
   let select_via_roulette_wheel ~quantity ~get_weight set =
     Log.debug (fun m -> m "select_via_roulette_wheel: quantity=%d, #set=%d" quantity (Classifier_set.cardinal set));
@@ -308,22 +310,20 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (************************************************************************************************)
 
   (* Routine [GENERATE COVERING CLASSIFIER] from page 261. *)
-  let generate_covering_classifier =
-    let all_actions = Action_set.of_list Action.all in
-    fun ~classifier_initialization ~current_time used_actions environment ->
-      Log.debug (fun m -> m "generate_covering_classifier: #used_actions=%d" (Action_set.cardinal used_actions));
-      let Config.{ initial_prediction; initial_prediction_error; initial_fitness; wildcard_probability } = classifier_initialization in
-      let unused_actions = Action_set.diff all_actions used_actions in
-      let action = Action_set.random_exn unused_actions in
-      let condition = Condition.make_from_environment ~wildcard_probability environment in
-      Classifier.make 
-        ~condition
-        ~action
-        ~prediction:initial_prediction
-        ~prediction_error:initial_prediction_error
-        ~fitness:initial_fitness
-        ~last_occurrence:current_time
-        ()
+  let generate_covering_classifier ~classifier_initialization ~current_time used_actions environment =
+    Log.debug (fun m -> m "generate_covering_classifier: #used_actions=%d" (Action_set.cardinal used_actions));
+    let Config.{ initial_prediction; initial_prediction_error; initial_fitness; wildcard_probability } = classifier_initialization in
+    let unused_actions = Action_set.diff all_actions used_actions in
+    let action = Action_set.random_exn unused_actions in
+    let condition = Condition.make_from_environment ~wildcard_probability environment in
+    Classifier.make
+      ~condition
+      ~action
+      ~prediction:initial_prediction
+      ~prediction_error:initial_prediction_error
+      ~fitness:initial_fitness
+      ~last_occurrence:current_time
+      ()
 
   (* Routine [GENERATE MATCH SET] from page 260. *)
   let generate_match_set ~config ~current_time population environment =
