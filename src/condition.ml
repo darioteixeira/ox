@@ -27,22 +27,35 @@ module Make (Sensors_def : Sensors.DEF) : S with module Sensors_def = Sensors_de
 
   let to_string { elements; _ } =
     let buf = Buffer.create 128 in
-    let rec loop : type a. a Sensors.t -> a Elements.t -> string =
+    let process_hd : type a. a Sensors.sensor -> a Elements.specificity array -> unit =
+      fun hd_sensors hd_elements ->
+        let (module Sensor) = hd_sensors in
+        let to_string = function
+          | Elements.Specific v -> Sensor.to_string v
+          | Elements.Wildcard -> "#"
+        in
+        let penultimate_idx = Array.length hd_elements - 2 in
+        Array.iteri hd_elements ~f:(fun idx element ->
+          Buffer.add_string buf (to_string element);
+          if idx <= penultimate_idx
+          then Buffer.add_char buf ','
+          else ()
+        )
+    in
+    let rec iter : type a. a Sensors.t -> a Elements.t -> unit =
       fun sensors elements ->
         match sensors, elements with
         | Sensors.[], Elements.[] ->
-            Buffer.contents buf
+            ()
+        | Sensors.[ hd_sensors ], Elements.[ hd_elements ] ->
+            process_hd hd_sensors hd_elements
         | Sensors.(hd_sensors :: tl_sensors), Elements.(hd_elements :: tl_elements) ->
-            let (module Sensor) = hd_sensors in
-            let to_string = function
-              | Elements.Specific v -> Sensor.to_string v
-              | Elements.Wildcard -> "#"
-            in
-            Array.iter ~f:(fun element -> element |> to_string |> Buffer.add_string buf) hd_elements;
-            Buffer.add_char buf ',';
-            loop tl_sensors tl_elements
+            process_hd hd_sensors hd_elements;
+            Buffer.add_char buf ';';
+            iter tl_sensors tl_elements
     in
-    loop Sensors_def.sensors elements
+    iter Sensors_def.sensors elements;
+    Buffer.contents buf
 
   let genericity { genericity; _ } =
     genericity
