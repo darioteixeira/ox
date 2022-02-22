@@ -5,9 +5,10 @@
     and {!S.provide_feedback}. The exceptions {!S.Expected_environment}
     and {!S.Expected_feedback} will be raised otherwise. *)
 module type S = sig
-  module Action : Action_intf.S
+  module Sensors_def : Sensors.DEF
+  module Action : Action.S
 
-  type t [@@deriving repr]
+  type t
   (** Represents the current state of a XCS learner. *)
 
   exception Expected_environment
@@ -28,7 +29,7 @@ module type S = sig
   val update_config : config:Config.t -> t -> unit
   (** Updates the configuration of the given learner. *)
 
-  val provide_environment : t -> bool array -> Action.t
+  val provide_environment : t -> Sensors_def.sensors Environment.t -> Action.t
   (** [provide_environment learner environment] feeds the current environment to the learner,
       returning the learner's recommended {!Action}. Note that the learner's internal state
       is modified! (Raises {!Expected_feedback} if the learner expects an invocation of

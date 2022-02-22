@@ -2,13 +2,7 @@ type classifier_initialization = {
   initial_prediction : float;
   initial_prediction_error : float;
   initial_fitness : float;
-  wildcard_probability : float;
-} [@@deriving repr]
-
-type min_actions =
-  | All_actions
-  | Custom of int
-  [@@deriving repr]
+}
 
 type t = {
   max_population_size : int;
@@ -20,22 +14,22 @@ type t = {
   age_threshold : float;
   crossover_probability : float;
   offspring_fitness_multiplier : float;
+  wildcard_probability : float;
   mutation_probability : float;
   deletion_threshold : int;
   fitness_threshold : float;
   subsumption_threshold : int;
   exploration_probability : float;
-  min_actions : min_actions;
+  min_actions : int option;
   do_offspring_subsumption : bool;
   do_action_set_subsumption : bool;
   classifier_initialization : classifier_initialization;
-} [@@deriving repr]
+}
 
 let default_classifier_initialization = {
   initial_prediction = 0.;
   initial_prediction_error = 0.;
   initial_fitness = 0.;
-  wildcard_probability = 0.33;
 }
 
 let default = {
@@ -48,12 +42,13 @@ let default = {
   age_threshold = 30.;
   crossover_probability = 0.75;
   offspring_fitness_multiplier = 0.1;
+  wildcard_probability = 0.33;
   mutation_probability = 0.02;
   deletion_threshold = 20;
   fitness_threshold = 0.1;
   subsumption_threshold = 20;
   exploration_probability = 0.5;
-  min_actions = All_actions;
+  min_actions = None;
   do_offspring_subsumption = true;
   do_action_set_subsumption = true;
   classifier_initialization = default_classifier_initialization;

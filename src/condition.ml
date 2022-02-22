@@ -1,127 +1,215 @@
+open Prelude
+
 module Array = ArrayLabels
-module String = StringLabels
 
-type trilean =
-  | True
-  | False
-  | Wildcard
-  [@@deriving repr]
+include Condition_intf
 
-type environment = bool array
+module Elements = struct
+  type 'a specificity =
+    | Specific of 'a
+    | Wildcard
 
-type t = {
-  trileans : trilean array;
-  genericity : int; (* Cached computed value: number of wildcards in the array of trileans. *)
-} [@@deriving repr]
+  type _ t =
+    | [] : unit t
+    | ( :: ) : 'a specificity array * 'b t -> ('a array * 'b) t
+end
 
-let char_of_trilean = function
-  | True -> '1'
-  | False -> '0'
-  | Wildcard -> '#'
+module Make (Sensors_def : Sensors.DEF) : S with module Sensors_def = Sensors_def = struct
 
-let trilean_of_boolean = function
-  | true -> True
-  | false -> False
+  module Sensors_def = Sensors_def
 
-let compute_genericity trileans =
-  Array.fold_left trileans ~init:0 ~f:(fun acc trilean ->
-    match trilean with
-    | Wildcard -> acc + 1
-    | _ -> acc
-  )
+  type 'a condition = {
+    elements : 'a Elements.t;
+    genericity : int; (* Cached computed value: number of wildcards in the elements. *)
+  }
 
-let of_array trileans =
-  let genericity = compute_genericity trileans in
-  { trileans; genericity }
+  type t = Sensors_def.sensors condition
 
-let to_string { trileans; _ } =
-  String.init (Array.length trileans) ~f:(fun idx -> char_of_trilean trileans.( idx ))
+  let to_string { elements; _ } =
+    let buf = Buffer.create 128 in
+    let rec loop : type a. a Sensors.t -> a Elements.t -> string =
+      fun sensors elements ->
+        match sensors, elements with
+        | Sensors.[], Elements.[] ->
+            Buffer.contents buf
+        | Sensors.(hd_sensors :: tl_sensors), Elements.(hd_elements :: tl_elements) ->
+            let (module Sensor) = hd_sensors in
+            let to_string = function
+              | Elements.Specific v -> Sensor.to_string v
+              | Elements.Wildcard -> "#"
+            in
+            Array.iter ~f:(fun element -> element |> to_string |> Buffer.add_string buf) hd_elements;
+            Buffer.add_char buf ',';
+            loop tl_sensors tl_elements
+    in
+    loop Sensors_def.sensors elements
 
-let genericity { genericity; _ } =
-  genericity
+  let genericity { genericity; _ } =
+    genericity
 
-let matches { trileans; _ } booleans =
-  let trilean_matches trilean boolean =
-    match (trilean, boolean) with
-    | (Wildcard, _) -> true
-    | (True, true) -> true
-    | (False, false) -> true
-    | (True, false) -> false
-    | (False, true) -> false
-  in
-  Array.for_all2 ~f:trilean_matches trileans booleans
+  let matches { elements; _ } environment =
+    let rec loop : type a. a Sensors.t -> a Elements.t -> a Environment.t -> bool =
+      fun sensors elements environment ->
+        match sensors, elements, environment with
+        | Sensors.[],
+          Elements.[],
+          Environment.[] ->
+            true
+        | Sensors.(hd_sensors :: tl_sensors),
+          Elements.(hd_elements :: tl_elements),
+          Environment.(hd_environment :: tl_environment) ->
+            let (module Sensor) = hd_sensors in
+            let does_match env = function
+              | Elements.Wildcard -> true
+              | Elements.Specific v when Sensor.equal v env -> true
+              | Elements.Specific _ -> false
+            in
+            match Array.for_all2 ~f:does_match hd_environment hd_elements with
+            | true -> loop tl_sensors tl_elements tl_environment
+            | false -> false
+    in
+    loop Sensors_def.sensors elements environment
 
-let is_more_general ~than subject =
-  subject.genericity > than.genericity
-  && Array.for_all2 subject.trileans than.trileans ~f:(fun e1 e2 ->
-    match e1, e2 with
-    | Wildcard, _ -> true
-    | _, Wildcard -> true
-    | e1, e2 when e1 = e2 -> true
-    | _ -> false
-  )
+  let is_more_general ~than subject =
+    let rec loop : type a. a Sensors.t -> a Elements.t -> a Elements.t -> bool =
+      fun sensors subject_elements than_elements ->
+        match sensors, subject_elements, than_elements with
+        | Sensors.[],
+          Elements.[],
+          Elements.[] ->
+            true
+        | Sensors.(hd_sensors :: tl_sensors),
+          Elements.(hd_subject_elements :: tl_subject_elements),
+          Elements.(hd_than_elements :: tl_than_elements) ->
+            let (module Sensor) = hd_sensors in
+            let is_element_more_general subject_elem than_elem =
+              match subject_elem, than_elem with
+              | Elements.(Wildcard, _) -> true
+              | Elements.(_, Wildcard) -> true
+              | Elements.(Specific v1, Specific v2) -> Sensor.equal v1 v2
+            in
+            match Array.for_all2 ~f:is_element_more_general hd_subject_elements hd_than_elements with
+            | true -> loop tl_sensors tl_subject_elements tl_than_elements
+            | false -> false
+    in
+    subject.genericity > than.genericity
+    && loop Sensors_def.sensors subject.elements than.elements
 
-let make_from_environment ~wildcard_probability environment =
-  let (genericity, trileans) =
-    Array.fold_left_map environment ~init:0 ~f:(fun acc b ->
-      if Random.float 1.0 < wildcard_probability
-      then (acc + 1, Wildcard)
-      else (acc, trilean_of_boolean b)
-    )
-  in
-  { trileans; genericity }
+  let make_from_environment ~wildcard_probability environment =
+    let rec loop : type a. a Sensors.t -> a Environment.t -> a condition =
+      fun sensors environment ->
+        match sensors, environment with
+        | Sensors.[], Environment.[] ->
+            { genericity = 0; elements = Elements.[] }
+        | Sensors.(hd_sensors :: tl_sensors), Environment.(hd_environment :: tl_environment) ->
+            let (module Sensor) = hd_sensors in
+            let (hd_genericity, hd_elements) =
+              Array.fold_left_map hd_environment ~init:0 ~f:(fun acc env ->
+                if Random.float 1.0 < wildcard_probability
+                then (acc + 1, Elements.Wildcard)
+                else (acc, Elements.Specific env)
+              )
+            in
+            let tl = loop tl_sensors tl_environment in
+            { genericity = hd_genericity + tl.genericity; elements = Elements.(hd_elements :: tl.elements) }
+    in
+    loop Sensors_def.sensors environment
 
-let maybe_mutate_trilean ~mutation_probability trilean environment =
-  match Random.float 1. < mutation_probability, trilean with
-  | false, trilean -> trilean
-  | true, Wildcard -> trilean_of_boolean environment
-  | true, (True | False) -> Wildcard
+  let mutate (type sensors) ~mutation_probability ~wildcard_probability (module Sensor : Sensors.SENSOR with type t = sensors) acc elem maybe_env =
+    let elem' =
+      match Random.float 1.0 < mutation_probability with
+      | false ->
+          elem
+      | true ->
+          match elem, maybe_env with
+          | Elements.Wildcard, None -> Elements.Specific (Sensor.random ())
+          | Elements.Wildcard, Some env -> Elements.Specific env
+          | Elements.Specific _, _ when Random.float 1.0 < wildcard_probability -> Elements.Wildcard
+          | Elements.Specific v, None -> Elements.Specific (Sensor.random ~exclude:v ())
+          | Elements.Specific _, Some env -> Elements.Specific env
+    in
+    let acc' =
+      match elem' with
+      | Elements.Wildcard -> acc + 1
+      | Elements.Specific _ -> acc
+    in
+    (acc', elem')
 
-let clone_with_mutation ~mutation_probability { trileans; _ } environment =
-  let trileans = Array.mapi trileans ~f:(fun i trilean -> maybe_mutate_trilean ~mutation_probability trilean environment.( i )) in
-  let genericity = compute_genericity trileans in
-  { trileans; genericity }
+  let clone_with_mutation ~mutation_probability ~wildcard_probability ?environment { elements; _ } =
+    let rec loop : type a. a Sensors.t -> a Elements.t -> a Environment.t option -> a condition =
+      fun sensors elements environment ->
+        match sensors, elements, environment with
+        | Sensors.[], Elements.[], _ ->
+            { genericity = 0; elements = Elements.[] }
+        | Sensors.(hd_sensors :: tl_sensors),
+          Elements.(hd_elements :: tl_elements),
+          None ->
+            let (hd_genericity, hd_elements) =
+              Array.fold_left_map hd_elements ~init:0 ~f:(fun acc elem ->
+                mutate ~mutation_probability ~wildcard_probability hd_sensors acc elem None
+              )
+            in
+            let tl = loop tl_sensors tl_elements None in
+            {
+              genericity = hd_genericity + tl.genericity;
+              elements = Elements.(hd_elements :: tl.elements);
+            }
+        | Sensors.(hd_sensors :: tl_sensors),
+          Elements.(hd_elements :: tl_elements),
+          Some Environment.(hd_environment :: tl_environment) ->
+            let (hd_genericity, hd_elements) =
+              Array.fold_left_map2 hd_elements hd_environment ~init:0 ~f:(fun acc elem env ->
+                mutate ~mutation_probability ~wildcard_probability hd_sensors acc elem (Some env)
+              )
+            in
+            let tl = loop tl_sensors tl_elements (Some tl_environment) in
+            {
+              genericity = hd_genericity + tl.genericity;
+              elements = Elements.(hd_elements :: tl.elements);
+            }
+    in
+    loop Sensors_def.sensors elements environment
 
-let crossover_with_mutation ~mutation_probability condition1 condition2 environment =
-  let { trileans = trileans1; _ } = condition1 in
-  let { trileans = trileans2; _ } = condition2 in
-  let len = Array.length trileans1 in
-  let apply_single_point_crossover trileans_a trileans_b =
-    let t1 = maybe_mutate_trilean ~mutation_probability trileans_a.( 0 ) environment.( 0 ) in
-    let t2 = maybe_mutate_trilean ~mutation_probability trileans_b.( 1 ) environment.( 1 ) in
-    let trileans = [| t1; t2 |] in
-    let genericity = compute_genericity trileans in
-    { trileans; genericity }
-  in
-  let apply_two_point_crossover ~low ~high trileans_a trileans_b =
-    let trileans =
-      Array.init len ~f:(fun idx ->
-        let src = if idx <= low || idx > high then trileans_a else trileans_b in
-        maybe_mutate_trilean ~mutation_probability src.( idx ) environment.( idx )
+  let crossover { elements = elements1; _ } { elements = elements2; _ } =
+    let apply_mask mask elements_true elements_false =
+      Array.fold_left_map3 mask elements_true elements_false ~init:0 ~f:(fun acc mask elem1 elem2 ->
+        let elem = if mask then elem1 else elem2 in
+        let acc =
+          match elem with
+          | Elements.Wildcard -> acc + 1
+          | Elements.Specific _ -> acc
+        in
+        (acc, elem)
       )
     in
-    let genericity = compute_genericity trileans in
-    { trileans; genericity }
-  in
-  match len with
-  | 0 | 1 ->
-      (* These are degenerate cases, and we can do whatever we want with them. *)
-      (condition1, condition2)
-  | 2 ->
-      (* Single-point crossover with mutation. *)
-      let c1 = apply_single_point_crossover trileans1 trileans2 in
-      let c2 = apply_single_point_crossover trileans2 trileans1 in
-      (c1, c2)
-  | length ->
-      (* Proper two-point crossover with random crossover points. *)
-      let low = Random.int (length - 2) in
-      let high = 1 + Random.int (length - 2) in
-      let (low, high) =
-        match Int.compare low high with
-        | -1 -> (low, high)
-        | 1 -> (high, low)
-        | _ -> (low - 1, high + 1)
-      in
-      let c1 = apply_two_point_crossover ~low ~high trileans1 trileans2 in
-      let c2 = apply_two_point_crossover ~low ~high trileans2 trileans1 in
-      (c1, c2)
+    let rec loop : type a. a Elements.t -> a Elements.t -> a condition * a condition =
+      fun elements1 elements2 ->
+        match elements1, elements2 with
+        | Elements.[], Elements.[] ->
+            let empty = { elements = Elements.[]; genericity = 0 } in
+            (empty, empty)
+        | Elements.(hd_elements1 :: tl_elements1), Elements.(hd_elements2 :: tl_elements2) ->
+            let crossover_mask = Array.(init (length hd_elements1) ~f:(fun _ -> Random.bool ())) in
+            let (hd1_genericity, hd1_elements) = apply_mask crossover_mask hd_elements1 hd_elements2 in
+            let (hd2_genericity, hd2_elements) = apply_mask crossover_mask hd_elements2 hd_elements1 in
+            let (tl1, tl2) = loop tl_elements1 tl_elements2 in
+            let v1 = {
+              genericity = hd1_genericity + tl1.genericity;
+              elements = Elements.(hd1_elements :: tl1.elements);
+            }
+            in
+            let v2 = {
+              genericity = hd2_genericity + tl2.genericity;
+              elements = Elements.(hd2_elements :: tl2.elements);
+            }
+            in
+            (v1, v2)
+    in
+    loop elements1 elements2
+
+  let crossover_with_mutation ~mutation_probability ~wildcard_probability ?environment condition1 condition2 =
+    let (condition3, condition4) = crossover condition1 condition2 in
+    let condition3 = clone_with_mutation ~mutation_probability ~wildcard_probability ?environment condition3 in
+    let condition4 = clone_with_mutation ~mutation_probability ~wildcard_probability ?environment condition4 in
+    (condition3, condition4)
+end

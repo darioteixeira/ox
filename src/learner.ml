@@ -7,60 +7,50 @@ module Map = MoreLabels.Map
 
 include Learner_intf
 
-module Make (Action : Action_intf.S) : S with module Action = Action = struct
-
+module Make (Sensors_def : Sensors.DEF) (Action : Action.S) : S with module Sensors_def = Sensors_def and module Action = Action =
+struct
+  module Sensors_def = Sensors_def
   module Action = Action
-
+  module Condition = Condition.Make (Sensors_def)
+  module Classifier = Classifier.Make (Condition) (Action)
   module Action_map = Map.Make (Action)
-
   module Action_set = Set.Make (Action)
-
-  module Classifier = Classifier.Make (Action)
-
   module Classifier_map = Map.Make (Classifier)
-
-  module Classifier_set = struct
-    include Set.Make (Classifier)
-
-    let t = Repr.map (Repr.seq Classifier.t) of_seq to_seq
-  end
+  module Classifier_set = Set.Make (Classifier)
 
   type population = {
     set : Classifier_set.t;
     numerosity : int; (* Note that numerosity may be different from set cardinality *)
-  } [@@deriving repr]
+  }
 
   type previous = {
-    previous_environment : bool array;
+    previous_environment: Sensors_def.sensors Environment.t;
     previous_action_set : Classifier_set.t;
     previous_reward : float;
-  } [@@deriving repr]
+  }
 
   type ready_for_environment = {
     config : Config.t;
     current_time : int;
     population : population;
     previous : previous option;
-  } [@@deriving repr]
+  }
 
   type ready_for_feedback = {
     config : Config.t;
     current_time : int;
     population : population;
-    environment: bool array;
+    environment: Sensors_def.sensors Environment.t;
     action_set : Classifier_set.t;
     best_action_with_prediction : (Action.t * float) Lazy.t;
     previous : previous option;
-  } [@@deriving repr]
+  }
 
   type ready_for =
     | Ready_for_environment of ready_for_environment
     | Ready_for_feedback of ready_for_feedback
-    [@@deriving repr]
 
   type t = ready_for ref
-
-  let t = Repr.ref ready_for_t
 
   exception Expected_environment
 
@@ -69,13 +59,6 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (************************************************************************************************)
   (* Logging and formatting.                                                                      *)
   (************************************************************************************************)
-
-  let pp_environment =
-    let pp_bool fmt = function
-      | true -> Format.pp_print_char fmt '1'
-      | false -> Format.pp_print_char fmt '0'
-    in
-    Fmt.(array ~sep:nop pp_bool)
 
   let logs_src = Logs.Src.create "oxen"
 
@@ -138,9 +121,11 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     );
     match Classifier_set.find_opt classifier set with
     | Some (Classifier.{ numerosity = n2; _ } as existing) ->
+        Log.debug (fun m -> m "insert_into_population: Classifier already present; updating numerosity.");
         Classifier.update ~numerosity:(n1 + n2) existing;
         { set; numerosity = numerosity + n1 }
     | None ->
+        Log.debug (fun m -> m "insert_into_population: Classifier not present; actually inserting.");
         { set = Classifier_set.add classifier set; numerosity = numerosity + n1 }
 
   (* Routine [DELETE FROM POPULATION] from page 268. *)
@@ -149,8 +134,10 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     let Config.{ max_population_size; deletion_threshold; fitness_threshold; _ } = config in
     match numerosity - max_population_size with
     | excess when excess <= 0 ->
+        Log.debug (fun m -> m "cull_population: Not culling because numerosity < max_population_size");
         population
     | excess ->
+        Log.debug (fun m -> m "cull_population: Actually culling because excess=%d" excess);
         let avg_population_fitness =
           let sum = Classifier_set.fold set ~init:0. ~f:(fun Classifier.{ fitness; _} sum -> sum +. fitness) in
           sum /. float_of_int numerosity
@@ -172,7 +159,17 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
               Classifier.update ~numerosity:(n - 1) victim;
               { set; numerosity = numerosity - 1 }
         in
-        List.fold_left victims ~init:population ~f:remove_classifier
+        let population = List.fold_left victims ~init:population ~f:remove_classifier in
+        let avg_population_fitness' =
+          let sum = Classifier_set.fold population.set ~init:0. ~f:(fun Classifier.{ fitness; _} sum -> sum +. fitness) in
+          sum /. float_of_int population.numerosity
+        in
+        Log.debug (fun m ->
+          m "cull_population: avg_population_fitness: before=%7.5f, after=%7.5f (%s)"
+          avg_population_fitness avg_population_fitness'
+          (match Float.compare avg_population_fitness avg_population_fitness' with -1 -> "UP" | 1 -> "DOWN" | _ -> "EQUAL")
+        );
+        population
 
   (************************************************************************************************)
   (* Subsumption.                                                                                 *)
@@ -227,42 +224,54 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
         )
 
   let insert_or_subsume ~subsumption_threshold ~prediction_error_threshold ~child ~parent1 ~parent2 population =
-    Log.debug (fun m -> m "insert_or_subsume");
+    Log.debug (fun m ->
+      m "insert_or_subsume: parent1=%s, parent2=%s, child=%s"
+      (Classifier.identifier parent1) (Classifier.identifier parent2) (Classifier.identifier child)
+    );
     if does_subsume ~subsumption_threshold ~prediction_error_threshold ~subsumer:parent1 ~subsumee:child
-    then
-      let () = Classifier.(update ~numerosity:(parent1.numerosity + child.numerosity) parent1) in
+    then begin
+      Log.debug (fun m -> m "insert_or_subsume: Parent1 subsumes child.");
+      Classifier.(update ~numerosity:(parent1.numerosity + child.numerosity) parent1);
       { population with numerosity = population.numerosity + child.numerosity }
+    end
     else if does_subsume ~subsumption_threshold ~prediction_error_threshold ~subsumer:parent2 ~subsumee:child
-    then
-      let () = Classifier.(update ~numerosity:(parent2.numerosity + child.numerosity) parent2) in
+    then begin
+      Log.debug (fun m -> m "insert_or_subsume: Parent2 subsumes child.");
+      Classifier.(update ~numerosity:(parent2.numerosity + child.numerosity) parent2);
       { population with numerosity = population.numerosity + child.numerosity }
-    else
+    end
+    else begin
+      Log.debug (fun m -> m "insert_or_subsume: Neither parent subsumes child.");
       insert_into_population child population
+    end
 
   (************************************************************************************************)
   (* Genetic algorithm.                                                                           *)
   (************************************************************************************************)
 
   (* Routine [RUN GA] from page 265. *)
-  let run_genetic_algorithm ~config ~current_time action_set population environment =
+  let run_genetic_algorithm ~config ~current_time ~prediction action_set population environment =
     Log.debug (fun m -> m "run_genetic_algorithm: #action_set=%d" (Classifier_set.cardinal action_set));
     assert (Classifier_set.cardinal action_set <> 0);
     let Config.{
-      prediction_error_threshold; age_threshold; crossover_probability; mutation_probability;
+      prediction_error_threshold; age_threshold;
+      crossover_probability; wildcard_probability; mutation_probability;
       offspring_fitness_multiplier; subsumption_threshold; do_offspring_subsumption; _
-    } = config in
-    let avg_age =
-      let (sum_age, sum_numerosity) =
-        Classifier_set.fold action_set ~init:(0, 0) ~f:(fun Classifier.{ last_occurrence; numerosity; _ } (sum_age, sum_numerosity) ->
-          let sum_age = sum_age + numerosity * (current_time - last_occurrence) in
-          let sum_numerosity = sum_numerosity + numerosity in
-          (sum_age, sum_numerosity)
-        )
-      in
-      float_of_int sum_age /. float_of_int sum_numerosity
+    } = config
     in
+    let (sum_age, sum_numerosity, prediction_error) =
+      let for_each_classifier Classifier.{ prediction_error; last_occurrence; numerosity; _ } (sum_age, sum_numerosity, sum_prediction_error) =
+        let sum_age = sum_age + numerosity * (current_time - last_occurrence) in
+        let sum_numerosity = sum_numerosity + numerosity in
+        let sum_prediction_error = sum_prediction_error +. prediction_error in
+        (sum_age, sum_numerosity, sum_prediction_error)
+      in
+      Classifier_set.fold action_set ~init:(0, 0, 0.) ~f:for_each_classifier
+    in
+    let avg_age = float_of_int sum_age /. float_of_int sum_numerosity in
     match avg_age <= age_threshold with
     | true ->
+        Log.debug (fun m -> m "run_genetic_algorithm: avg_age=%2.1f, which is lower than age_threshold=%2.1f" avg_age age_threshold);
         population
     | false ->
         Classifier_set.iter action_set ~f:(Classifier.update ~last_occurrence:current_time);
@@ -272,25 +281,49 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
           | [ parent1; parent2 ] -> (parent1, parent2)
           | _ -> assert false
         in
-        let Classifier.{ condition = c1; prediction = p1; prediction_error = pe1; fitness = f1; _ } = parent1 in
-        let Classifier.{ condition = c2; prediction = p2; prediction_error = pe2; fitness = f2; _ } = parent2 in
+        let Classifier.{ condition = c1; action = a1; fitness = f1; _ } = parent1 in
+        let Classifier.{ condition = c2; action = a2; fitness = f2; _ } = parent2 in
+        let maybe_mutate_action action =
+          if Random.float 1. < mutation_probability
+          then Action_set.random_exn all_actions
+          else action
+        in
+        let action1 = maybe_mutate_action a1 in
+        let action2 = maybe_mutate_action a2 in
         let (child1, child2) =
           match (Random.float 1. < crossover_probability) && not (Classifier.equal parent1 parent2) with
           | true ->
               Log.debug (fun m -> m "run_genetic_algorithm: Applying crossover between %s and %s" (Classifier.identifier parent1) (Classifier.identifier parent2));
-              let (condition1, condition2) = Condition.crossover_with_mutation ~mutation_probability c1 c2 environment in
-              let prediction = (p1 +. p2) /. 2. in
-              let prediction_error = (pe1 +. pe2) /. 2. in
+              let (condition1, condition2) =
+                Condition.crossover_with_mutation ~mutation_probability ~wildcard_probability ~environment c1 c2
+              in
               let fitness = offspring_fitness_multiplier *. (f1 +. f2) /. 2. in
-              let child1 = Classifier.clone ~condition:condition1 ~prediction ~prediction_error ~fitness ~numerosity:1 parent1 in
-              let child2 = Classifier.clone ~condition:condition2 ~prediction ~prediction_error ~fitness ~numerosity:1 parent2 in
+              let child1 =
+                Classifier.clone
+                  ~condition:condition1 ~action:action1 ~prediction ~prediction_error
+                  ~fitness ~experience:0 ~numerosity:1 parent1
+              in
+              let child2 =
+                Classifier.clone
+                  ~condition:condition2 ~action:action2 ~prediction ~prediction_error
+                  ~fitness ~experience:0 ~numerosity:1 parent2
+              in
               (child1, child2)
           | false ->
               Log.debug (fun m -> m "run_genetic_algorithm: Cloning %s and %s" (Classifier.identifier parent1) (Classifier.identifier parent2));
-              let condition1 = Condition.clone_with_mutation ~mutation_probability c1 environment in
-              let condition2 = Condition.clone_with_mutation ~mutation_probability c2 environment in
-              let child1 = Classifier.clone ~condition:condition1 ~fitness:(offspring_fitness_multiplier *. f1) ~numerosity:1 parent1 in
-              let child2 = Classifier.clone ~condition:condition2 ~fitness:(offspring_fitness_multiplier *. f2) ~numerosity:1 parent2 in
+              let condition1 = Condition.clone_with_mutation ~mutation_probability ~wildcard_probability ~environment c1 in
+              let condition2 = Condition.clone_with_mutation ~mutation_probability ~wildcard_probability ~environment c2 in
+              let child1 =
+                Classifier.clone
+                  ~condition:condition1 ~action:action1 ~prediction ~prediction_error
+                  ~fitness:(offspring_fitness_multiplier *. f1) ~experience:0 ~numerosity:1 parent1
+              in
+              let child2 =
+                Classifier.clone
+                  ~condition:condition2 ~action:action2 ~prediction ~prediction_error
+                  ~fitness:(offspring_fitness_multiplier *. f2)
+                  ~experience:0 ~numerosity:1 parent2
+              in
               (child1, child2)
         in
         match do_offspring_subsumption with
@@ -310,9 +343,10 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (************************************************************************************************)
 
   (* Routine [GENERATE COVERING CLASSIFIER] from page 261. *)
-  let generate_covering_classifier ~classifier_initialization ~current_time used_actions environment =
+  let generate_covering_classifier ~config ~current_time used_actions environment =
     Log.debug (fun m -> m "generate_covering_classifier: #used_actions=%d" (Action_set.cardinal used_actions));
-    let Config.{ initial_prediction; initial_prediction_error; initial_fitness; wildcard_probability } = classifier_initialization in
+    let Config.{ classifier_initialization; wildcard_probability; _ } = config in
+    let Config.{ initial_prediction; initial_prediction_error; initial_fitness } = classifier_initialization in
     let unused_actions = Action_set.diff all_actions used_actions in
     let action = Action_set.random_exn unused_actions in
     let condition = Condition.make_from_environment ~wildcard_probability environment in
@@ -323,17 +357,16 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
       ~prediction_error:initial_prediction_error
       ~fitness:initial_fitness
       ~last_occurrence:current_time
-      ()
+      ~experience:0
+      ~avg_action_set_size:1.
+      ~numerosity:1
+      ~accuracy:1.
 
   (* Routine [GENERATE MATCH SET] from page 260. *)
   let generate_match_set ~config ~current_time population environment =
     Log.debug (fun m -> m "generate_match_set");
-    let Config.{ min_actions; classifier_initialization; _ } = config in
-    let effective_min_actions =
-      match min_actions with
-      | All_actions -> num_actions
-      | Custom n -> n
-    in
+    let Config.{ min_actions; _ } = config in
+    let effective_min_actions = Option.value ~default:num_actions min_actions in
     let rec loop population =
       let (match_set, used_actions) =
         let process_classifier (Classifier.{ condition; action; _ } as cl) (match_set, used_actions) =
@@ -347,7 +380,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
       | true ->
           (population, match_set)
       | false ->
-          let new_cl = generate_covering_classifier ~classifier_initialization ~current_time used_actions environment in
+          let new_cl = generate_covering_classifier ~config ~current_time used_actions environment in
           let population =
             population
             |> insert_into_population new_cl
@@ -390,7 +423,8 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
   (************************************************************************************************)
 
   let select_random_action ~num_predictions predictions =
-    Log.debug (fun m -> m "select_random_action: #predictions=%d" (List.length predictions));
+    Log.debug (fun m -> m "select_random_action: #predictions=%d" num_predictions);
+    assert (num_predictions = List.length predictions);
     List.nth predictions (Random.int num_predictions)
 
   let select_best_action predictions =
@@ -482,7 +516,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   (* First part (lines 3-8) of routine [RUN EXPERIMENT] from page 260. *)
   let provide_environment learner environment =
-    Log.debug (fun m -> m "provide_environment: environment=%a" pp_environment environment);
+    Log.debug (fun m -> m "provide_environment");
     match !learner with
     | Ready_for_feedback _ ->
         raise Expected_feedback
@@ -528,7 +562,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
           | Some { previous_environment; previous_action_set; previous_reward } ->
               let payoff = previous_reward +. discount_factor *. snd (Lazy.force best_action_with_prediction) in
               let (previous_action_set', population) = update_action_set ~config ~payoff previous_action_set population in
-              run_genetic_algorithm ~config ~current_time previous_action_set' population previous_environment
+              run_genetic_algorithm ~config ~current_time ~prediction:payoff previous_action_set' population previous_environment
           | None ->
               population
         in
@@ -536,7 +570,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
           match is_final_step with
           | true ->
               let (action_set', population) = update_action_set ~config ~payoff:reward action_set population in
-              let population = run_genetic_algorithm ~config ~current_time action_set' population environment in
+              let population = run_genetic_algorithm ~config ~current_time ~prediction:reward action_set' population environment in
               (population, None)
           | false ->
               let previous = {

@@ -1,6 +1,5 @@
 (library
   (name oxen)
   (public_name oxen)
-  (libraries fmt logs repr)
-  (preprocess (pps ppx_repr))
+  (libraries fmt logs)
 )

@@ -1,9 +1,11 @@
 include Classifier_intf
 
-module Make (Action : Action_intf.S) : S with module Action = Action = struct
+module Make (Condition : Condition.S) (Action : Action.S) : S with module Condition = Condition and module Action = Action = struct
+
+  module Condition = Condition
   module Action = Action
 
-  type identifier = string [@@deriving repr]
+  type identifier = string
 
   type t = {
     identifier : identifier;
@@ -17,14 +19,14 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
     mutable avg_action_set_size : float;
     mutable numerosity : int;
     mutable accuracy : float;
-  } [@@deriving repr]
+  }
 
   let make_identifier ~condition ~action =
     Printf.sprintf "%s-%s" (Condition.to_string condition) (Action.to_string action)
 
   let make
     ~condition ~action ~prediction ~prediction_error ~fitness ~last_occurrence
-    ?(experience = 1) ?(avg_action_set_size = 1.) ?(numerosity = 1) ?(accuracy = 1.) () = {
+    ~experience ~avg_action_set_size ~numerosity ~accuracy = {
       identifier = make_identifier ~condition ~action;
       condition;
       action;
@@ -78,7 +80,7 @@ module Make (Action : Action_intf.S) : S with module Action = Action = struct
 
   let fitness { fitness; _ } =
     fitness
-    
+
   let numerosity { numerosity; _ } =
     numerosity
 end

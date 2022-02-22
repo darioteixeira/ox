@@ -1,3 +1,47 @@
+module ArrayLabels = struct
+  include ArrayLabels
+
+  let fold_left_map2 ~f ~init array1 array2 =
+    match length array1, length array2 with
+    | 0, 0 ->
+        (init, [| |])
+    | len1, len2 when len1 <> len2 ->
+        invalid_arg "ArrayLabels.fold_left_map2: arrays must have the same length"
+    | len, _ ->
+        let (acc, elt) = f init (unsafe_get array1 0) (unsafe_get array2 0) in
+        let dest = make len elt in
+        let rec loop acc idx =
+          match idx < len with
+          | false ->
+              acc
+          | true ->
+              let (acc, elt) = f acc (unsafe_get array1 idx) (unsafe_get array2 idx) in
+              unsafe_set dest idx elt;
+              loop acc (idx + 1)
+        in
+        (loop acc 1, dest)
+
+  let fold_left_map3 ~f ~init array1 array2 array3 =
+    match length array1, length array2, length array3 with
+    | 0, 0, 0 ->
+        (init, [| |])
+    | len1, len2, len3 when len1 <> len2 || len1 <> len3 ->
+        invalid_arg "ArrayLabels.fold_left_map3: arrays must have the same length"
+    | len, _, _ ->
+        let (acc, elt) = f init (unsafe_get array1 0) (unsafe_get array2 0) (unsafe_get array3 0) in
+        let dest = make len elt in
+        let rec loop acc idx =
+          match idx < len with
+          | false ->
+              acc
+          | true ->
+              let (acc, elt) = f acc (unsafe_get array1 idx) (unsafe_get array2 idx) (unsafe_get array3 idx) in
+              unsafe_set dest idx elt;
+              loop acc (idx + 1)
+        in
+        (loop acc 1, dest)
+end
+
 module Set = struct
   module type OrderedType = MoreLabels.Set.OrderedType
 

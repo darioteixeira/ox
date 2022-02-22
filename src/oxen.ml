@@ -1,8 +1,14 @@
-module Learner = Learner
-(** The [Learner] module implements the XCS learning classifier system. *)
+module Action = Action
+(** The [Action] module defines a signature used to parameterise {!Learner}. *)
 
 module Config = Config
 (** The [Config] module defines the various configuration parameters for {!Learner}. *)
 
-module Action_intf = Action_intf
-(** The [Action_intf] module defines a signature used to parameterise {!Learner}. *)
+module Environment = Environment
+(** The [Environment] module is used to construct values of the environment to feed the {!Learner}. *)
+
+module Learner = Learner
+(** The [Learner] module implements the XCS learning classifier system. *)
+
+module Sensors = Sensors
+(** The [Sensors] module defines a signature used to parameterise {!Learner}. *)

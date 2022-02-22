@@ -10,16 +10,7 @@ type classifier_initialization = {
   initial_fitness : float;
   (** Parameter [F_I]: Initial value for the fitness parameter [F] in new classifiers.
       (Usually 0) *)
-  wildcard_probability : float;
-  (** Parameter [P_#]: This is the probability of using a wildcard (also known as a "don't care"
-      and usually represented by the [#] symbol) in one attribute in the condition string when covering.
-      (Usually around 0.33) *)
-} [@@deriving repr]
-
-type min_actions =
-  | All_actions
-  | Custom of int
-  [@@deriving repr]
+}
 
 type t = {
   max_population_size : int;
@@ -53,6 +44,10 @@ type t = {
   (** For classifiers created during a run of the genetic algorithm,
       their fitness will be multiplied by this value.
       (In the reference paper, this is actually a constant with a value of 0.1) *)
+  wildcard_probability : float;
+  (** Parameter [P_#]: This is the probability of using a wildcard (also known as a "don't care"
+      and usually represented by the [#] symbol) in one attribute in the condition string when covering.
+      (Usually around 0.33) *)
   mutation_probability : float;
   (** Parameter [μ]: The probability of mutating an allele
       in the offspring when running the GA.
@@ -74,12 +69,12 @@ type t = {
   (** Parameter [p_explr]: During the selection of an action, this is the probability
       of going for exploration by choosing an action with random uniform probability.
       (Usually around 0.5) *)
-  min_actions : min_actions;
+  min_actions : int option;
   (** Parameter [θ_mna]: This is the minimum number of actions that must be present
       in the match set [M]. If the number of actions is smaller than this minimum,
-      then covering will occur. If set to [All_actions], then the minimum is equal
-      to the number of possible actions (this is also the recommended default).
-      You may however set it to a smaller number using the [Custom] variant. *)
+      then covering will occur. If set to [None], then the minimum is equal to the
+      number of possible actions (this is also the recommended default).
+      You may however set it to a smaller number using the [Some] variant. *)
   do_offspring_subsumption : bool;
   (** Parameter [doGASubsumption]: Boolean that specifies whether offspring
       are to be tested for possible logical subsumption by their parents. *)
@@ -88,7 +83,7 @@ type t = {
       action sets are to be tested for subsuming classifiers. *)
   classifier_initialization : classifier_initialization;
   (** Initial parameters for new classifiers. *)
-} [@@deriving repr]
+}
 
 val default_classifier_initialization : classifier_initialization
 

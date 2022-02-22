@@ -1,13 +1,14 @@
 module type S = sig
-  module Action : Action_intf.S
+  module Condition : Condition.S
+  module Action : Action.S
 
-  type identifier [@@deriving repr]
+  type identifier
 
   type t = private {
     identifier : identifier;
     (** This identifier is computed from the [condition] and [action]. *)
     condition : Condition.t;
-    (** Input state(s) which the classifier matches. *)
+    (** Environmental state(s) which the classifier matches. *)
     action : Action.t;
     (** Action proposed by the classifier upon a match. *)
     mutable prediction : float;
@@ -26,10 +27,9 @@ module type S = sig
     (** Parameter [n]: Number of micro-classifiers this classifier represents. *)
     mutable accuracy : float;
     (** Parameter [k]: Accuracy of the classifier. Note that this is a cached computed quantity based on the prediction error [ε]. *)
-  } [@@deriving repr]
+  }
 
-  (** Creates a fresh classifier with the provided parameters.
-  *)
+  (** Creates a fresh classifier with the provided parameters. *)
   val make :
     condition:Condition.t ->
     action:Action.t ->
@@ -37,15 +37,13 @@ module type S = sig
     prediction_error:float ->
     fitness:float ->
     last_occurrence:int ->
-    ?experience:int ->
-    ?avg_action_set_size:float ->
-    ?numerosity:int ->
-    ?accuracy:float ->
-    unit ->
+    experience:int ->
+    avg_action_set_size:float ->
+    numerosity:int ->
+    accuracy:float ->
     t
 
-  (** Updates the given classifier in-place.
-  *)
+  (** Updates the given classifier in-place. *)
   val update :
     ?prediction:float ->
     ?prediction_error:float ->
@@ -58,8 +56,7 @@ module type S = sig
     t ->
     unit
 
-  (** Returns a fresh classifier using the provided classifier as template.
-  *)
+  (** Returns a fresh classifier using the provided classifier as template. *)
   val clone :
     ?condition:Condition.t ->
     ?action:Action.t ->
