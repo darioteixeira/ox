@@ -7,6 +7,9 @@ module type S = sig
       A single condition may therefore match multiple environments. *)
   type t
 
+  (** Creates a condition based on its string serialisation. *)
+  val of_string : string -> t
+
   (** Returns a string representation of the given condition. *)
   val to_string : t -> string
 

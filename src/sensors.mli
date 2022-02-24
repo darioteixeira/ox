@@ -3,6 +3,7 @@ module type SENSOR = sig
 
   val equal : t -> t -> bool
   val random : ?exclude:t -> unit -> t
+  val of_string : string -> t
   val to_string : t -> string
 end
 

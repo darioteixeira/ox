@@ -25,6 +25,38 @@ module Make (Sensors_def : Sensors.DEF) : S with module Sensors_def = Sensors_de
 
   type t = Sensors_def.sensors condition
 
+  let inter_group_separator = ';'
+  let intra_group_separator = ','
+  let wildcard = "#"
+
+  let of_string str =
+    let rec loop : type a. a Sensors.t -> string list -> a condition =
+      fun sensors groups ->
+        match sensors, groups with
+        | Sensors.[], [] ->
+            { genericity = 0; elements = Elements.[] }
+        | Sensors.[], (_ :: _) ->
+            invalid_arg "Condition.of_string: String contains too many groups"
+        | Sensors.(hd_sensors :: tl_sensors), (hd_groups :: tl_groups) ->
+            let (module Sensor) = hd_sensors in
+            let str_elements = String.split_on_char intra_group_separator hd_groups in
+            let process_element acc = function
+              | str when String.equal str wildcard -> (acc + 1, Elements.Wildcard)
+              | str -> (acc, Elements.Specific (Sensor.of_string str))
+            in
+            let (hd_genericity, hd_elements) =
+              str_elements
+              |> Array.of_list
+              |> Array.fold_left_map ~init:0 ~f:process_element
+            in
+            let tl = loop tl_sensors tl_groups in
+            { genericity = hd_genericity + tl.genericity; elements = Elements.(hd_elements :: tl.elements) }
+        | Sensors.(_ :: _), [] ->
+            invalid_arg "Condition.of_string: String contains too few groups"
+    in
+    let groups = String.split_on_char inter_group_separator str in
+    loop Sensors_def.sensors groups
+
   let to_string { elements; _ } =
     let buf = Buffer.create 128 in
     let process_hd : type a. a Sensors.sensor -> a Elements.specificity array -> unit =
@@ -32,13 +64,13 @@ module Make (Sensors_def : Sensors.DEF) : S with module Sensors_def = Sensors_de
         let (module Sensor) = hd_sensors in
         let to_string = function
           | Elements.Specific v -> Sensor.to_string v
-          | Elements.Wildcard -> "#"
+          | Elements.Wildcard -> wildcard
         in
         let penultimate_idx = Array.length hd_elements - 2 in
         Array.iteri hd_elements ~f:(fun idx element ->
           Buffer.add_string buf (to_string element);
           if idx <= penultimate_idx
-          then Buffer.add_char buf ','
+          then Buffer.add_char buf intra_group_separator
           else ()
         )
     in
@@ -51,7 +83,7 @@ module Make (Sensors_def : Sensors.DEF) : S with module Sensors_def = Sensors_de
             process_hd hd_sensors hd_elements
         | Sensors.(hd_sensors :: tl_sensors), Elements.(hd_elements :: tl_elements) ->
             process_hd hd_sensors hd_elements;
-            Buffer.add_char buf ';';
+            Buffer.add_char buf inter_group_separator;
             iter tl_sensors tl_elements
     in
     iter Sensors_def.sensors elements;
