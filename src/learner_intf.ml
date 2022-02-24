@@ -19,10 +19,11 @@ module type S = sig
   val update_config : config:Config.t -> t -> unit
   (** Updates the configuration of the given learner. *)
 
-  val iterate : t -> Sensors_def.sensors Environment.t -> (Action.t -> float * bool) -> unit
+  val iterate : t -> Sensors_def.sensors Environment.t -> (Action.t -> float * bool) -> Action.t * float * bool
   (** [iterate learner environment handle_action] starts by feeding the environment to the learner,
       which responds with the action it deems appropriate. This action is then given to the function
       [handle_action], which must return a pair consisting of a suitable reward and a boolean
       indicating whether this was the final step in a multi-step problem (for single-step problems,
-      this boolean should always be true). *)
+      this boolean should always be true). The function returns a triple consisting of the action
+      provided to [handle_action] together with the reward and the boolean produced by the latter. *)
 end

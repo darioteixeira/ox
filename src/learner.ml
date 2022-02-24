@@ -588,5 +588,6 @@ struct
     Log.debug (fun m -> m "iterate");
     let action = provide_environment learner environment in
     let (reward, is_final_step) = handler action in
-    provide_feedback ~reward ~is_final_step learner
+    provide_feedback ~reward ~is_final_step learner;
+    (action, reward, is_final_step)
 end
