@@ -3,8 +3,8 @@ module type SENSOR = sig
 
   val equal : t -> t -> bool
   val random : ?exclude:t -> unit -> t
-  val of_string : string -> t
   val to_string : t -> string
+  val of_string : string -> t
 end
 
 type 'a sensor = (module SENSOR with type t = 'a)
@@ -30,14 +30,14 @@ module Binary = struct
     | Some false -> true
     | None -> Random.bool ()
 
+  let to_string = function
+    | false -> "0"
+    | true -> "1"
+
   let of_string = function
     | "0" -> false
     | "1" -> true
     | str -> invalid_arg ("Sensors.Binary.of_string: " ^ str)
-
-  let to_string = function
-    | false -> "0"
-    | true -> "1"
 end
 
 module Ternary = struct
@@ -64,16 +64,16 @@ module Ternary = struct
         | 1 -> True
         | _ -> Unknown
 
+  let to_string = function
+    | False -> "0"
+    | True -> "1"
+    | Unknown -> "_"
+
   let of_string = function
     | "0" -> False
     | "1" -> True
     | "_" -> Unknown
     | str -> invalid_arg ("Sensors.Ternary.of_string: " ^ str)
-
-  let to_string = function
-    | False -> "0"
-    | True -> "1"
-    | Unknown -> "_"
 end
 
 let binary = (module Binary : SENSOR with type t = Binary.t)

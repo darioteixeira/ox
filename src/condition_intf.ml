@@ -7,11 +7,23 @@ module type S = sig
       A single condition may therefore match multiple environments. *)
   type t
 
-  (** Creates a condition based on its string serialisation. *)
-  val of_string : string -> t
+  (** Serialises a condition into a string. For a correct round-trip invocation
+      of [to_string] followed by {!of_string}, the [intra_group_separator] and
+      [inter_group_separator] parameters must be identical (or equally absent)
+      in both invocations. Note that [inter_group_separator] defaults to a
+      semicolon character, whereas [intra_group_separator] is absent unless
+      explicitly provided.  Moreover, if any of the sensor values is serialised
+      into a multi-character string, then correct deserialisation with {!of_string}
+      can only occurr if [intra_group_separator] is explicitly provided. Finally,
+      a safe round-trip serialisation/deserialisation also requires that the
+      characters used in the [intra_group_separator] and [inter_group_separator]
+      are not used in the string representation of any of sensors values.
+      *)
+  val to_string : ?intra_group_separator:char -> ?inter_group_separator:char -> t -> string
 
-  (** Returns a string representation of the given condition. *)
-  val to_string : t -> string
+  (** Deserialises a condition from a string.
+      See {!to_string} for details concerning safe usage. *)
+  val of_string : ?intra_group_separator:char -> ?inter_group_separator:char -> string -> t
 
   (** Returns the number of wildcards in the given condition. *)
   val genericity : t -> int

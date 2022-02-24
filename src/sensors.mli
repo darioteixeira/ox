@@ -3,8 +3,8 @@ module type SENSOR = sig
 
   val equal : t -> t -> bool
   val random : ?exclude:t -> unit -> t
-  val of_string : string -> t
   val to_string : t -> string
+  val of_string : string -> t
 end
 
 type 'a sensor = (module SENSOR with type t = 'a)
