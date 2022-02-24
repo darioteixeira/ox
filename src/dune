@@ -2,4 +2,5 @@
   (name oxen)
   (public_name oxen)
   (libraries fmt logs)
+  (preprocess (pps ppx_deriving.eq))
 )
