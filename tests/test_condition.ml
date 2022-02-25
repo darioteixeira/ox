@@ -19,6 +19,10 @@ module C1 = Oxen__Condition.Make (Sensors_def1)
 
 module C2 = Oxen__Condition.Make (Sensors_def2)
 
+let testable_c1 = Alcotest.testable (fun fmt c1 -> Format.pp_print_string fmt @@ C1.to_string c1) C1.equal
+
+let testable_c2 = Alcotest.testable (fun fmt c2 -> Format.pp_print_string fmt @@ C2.to_string c2) C2.equal
+
 let test_serialisation () =
   let intra_group_separator = ',' in
   let inter_group_separator = '/' in
@@ -73,17 +77,17 @@ let test_is_more_general () =
 
 let test_make_from_environment () =
   let env1 = Environment.[ [| false; true |] ] in
-  Alcotest.(check string) "case0" "01" C1.(make_from_environment ~wildcard_probability:0. env1 |> to_string);
-  Alcotest.(check string) "case1" "##" C1.(make_from_environment ~wildcard_probability:1. env1 |> to_string);
+  Alcotest.check testable_c1 "case0" C1.(of_string "01") C1.(make_from_environment ~wildcard_probability:0. env1);
+  Alcotest.check testable_c1 "case1" C1.(of_string "##") C1.(make_from_environment ~wildcard_probability:1. env1);
   let env2 = Environment.[ [| false; true |]; Ternary.[| False; True; Unknown |] ] in
-  Alcotest.(check string) "case2" "01;01_" C2.(make_from_environment ~wildcard_probability:0. env2 |> to_string);
-  Alcotest.(check string) "case3" "##;###" C2.(make_from_environment ~wildcard_probability:1. env2 |> to_string)
+  Alcotest.check testable_c2 "case2" C2.(of_string "01;01_") C2.(make_from_environment ~wildcard_probability:0. env2);
+  Alcotest.check testable_c2 "case3" C2.(of_string "##;###") C2.(make_from_environment ~wildcard_probability:1. env2)
 
 let test_clone_with_mutation () =
-  Alcotest.(check string) "case0" "01#" C1.("01#" |> of_string |> clone_with_mutation ~mutation_probability:0. ~wildcard_probability:0. |> to_string);
-  Alcotest.(check string) "case1" "10" C1.("01" |> of_string |> clone_with_mutation ~mutation_probability:1. ~wildcard_probability:0. |> to_string);
-  Alcotest.(check string) "case2" "01#" C1.("01#" |> of_string |> clone_with_mutation ~mutation_probability:0. ~wildcard_probability:1. |> to_string);
-  Alcotest.(check string) "case3" "##" C1.("01" |> of_string |> clone_with_mutation ~mutation_probability:1. ~wildcard_probability:1. |> to_string)
+  Alcotest.check testable_c1 "case0" C1.(of_string "01#") C1.("01#" |> of_string |> clone_with_mutation ~mutation_probability:0. ~wildcard_probability:0.);
+  Alcotest.check testable_c1 "case1" C1.(of_string "10") C1.("01" |> of_string |> clone_with_mutation ~mutation_probability:1. ~wildcard_probability:0.);
+  Alcotest.check testable_c1 "case2" C1.(of_string "01#") C1.("01#" |> of_string |> clone_with_mutation ~mutation_probability:0. ~wildcard_probability:1.);
+  Alcotest.check testable_c1 "case3" C1.(of_string "##") C1.("01" |> of_string |> clone_with_mutation ~mutation_probability:1. ~wildcard_probability:1.)
 
 let test_cases = [
   Alcotest.test_case "to_string / of_string" `Quick test_serialisation;
