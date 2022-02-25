@@ -89,6 +89,21 @@ let test_clone_with_mutation () =
   Alcotest.check testable_c1 "case2" C1.(of_string "01#") C1.("01#" |> of_string |> clone_with_mutation ~mutation_probability:0. ~wildcard_probability:1.);
   Alcotest.check testable_c1 "case3" C1.(of_string "##") C1.("01" |> of_string |> clone_with_mutation ~mutation_probability:1. ~wildcard_probability:1.)
 
+let test_crossover_with_mutation () =
+  let checker = Alcotest.(check @@ pair testable_c1 testable_c1) in
+  let c0 = C1.of_string "01#" in
+  let c0' = C1.of_string "01#" in
+  checker "case0" (c0', c0') C1.(crossover_with_mutation ~mutation_probability:0. ~wildcard_probability:0. c0 c0);
+  let c1 = C1.of_string "01" in
+  let c1' = C1.of_string "10" in
+  checker "case1" (c1', c1') C1.(crossover_with_mutation ~mutation_probability:1. ~wildcard_probability:0. c1 c1);
+  let c2 = C1.of_string "01#" in
+  let c2' = C1.of_string "01#" in
+  checker "case2" (c2', c2') C1.(crossover_with_mutation ~mutation_probability:0. ~wildcard_probability:1. c2 c2);
+  let c3 = C1.of_string "01" in
+  let c3' = C1.of_string "##" in
+  checker "case3" (c3', c3') C1.(crossover_with_mutation ~mutation_probability:1. ~wildcard_probability:1. c3 c3)
+
 let test_cases = [
   Alcotest.test_case "to_string / of_string" `Quick test_serialisation;
   Alcotest.test_case "genericity" `Quick test_genericity;
@@ -96,4 +111,5 @@ let test_cases = [
   Alcotest.test_case "is_more_general" `Quick test_is_more_general;
   Alcotest.test_case "make_from_environment" `Quick test_make_from_environment;
   Alcotest.test_case "clone_with_mutation" `Quick test_clone_with_mutation;
+  Alcotest.test_case "crossover_with_mutation" `Quick test_crossover_with_mutation;
 ]
