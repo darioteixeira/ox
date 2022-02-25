@@ -52,6 +52,10 @@ struct
 
   type t = ready_for ref
 
+  exception Expected_environment
+
+  exception Expected_feedback
+
   (************************************************************************************************)
   (* Logging and formatting.                                                                      *)
   (************************************************************************************************)
@@ -515,7 +519,7 @@ struct
     Log.debug (fun m -> m "provide_environment");
     match !learner with
     | Ready_for_feedback _ ->
-        invalid_arg "Learner.provide_environment: Expected provide_feedback"
+        raise Expected_feedback
     | Ready_for_environment { config; current_time; population; previous } ->
         Log.debug (fun m ->
           m "provide_environment: current_time=%d, #population=%d, numerosity=%d"
@@ -546,7 +550,7 @@ struct
     Log.debug (fun m -> m "provide_feedback: reward=%2.1f, is_final_step=%B" reward is_final_step);
     match !learner with
     | Ready_for_environment _ ->
-        invalid_arg "Learner.provide_feedback: Expected provide_environment"
+        raise Expected_environment
     | Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous } ->
         Log.debug (fun m ->
           m "provide_feedback: current_time=%d, #population=%d, numerosity=%d"
