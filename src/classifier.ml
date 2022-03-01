@@ -1,16 +1,15 @@
 include Classifier_intf
 
-module Make (Condition : Condition.S) (Action : Action.S) : S with module Condition = Condition and module Action = Action = struct
-
-  module Condition = Condition
-  module Action = Action
+module Make (Condition : Condition.S) (Action : Action.JSONABLE) : S with type condition = Condition.t and type action = Action.t = struct
 
   type identifier = string
+  type condition = Condition.t
+  type action = Action.t
 
   type t = {
     identifier : identifier;
-    condition : Condition.t;
-    action : Action.t;
+    condition : condition;
+    action : action;
     mutable prediction : float;
     mutable prediction_error : float;
     mutable fitness : float;

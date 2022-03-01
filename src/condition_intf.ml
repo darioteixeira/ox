@@ -1,6 +1,6 @@
 module type S = sig
   (** A condition is parameterised by the type of its sensors. *)
-  module Sensors_def : Sensors.DEF
+  type sensors
 
   (** A condition is essentially a representation of {!Environment.t}
       where each individual locus may be replaced by a wildcard symbol.
@@ -10,13 +10,13 @@ module type S = sig
   (** Create a condition using the provided environment as template.
       With [wildcard_probability], each locus from the environment
       may be transformed into a wildcard symbol. *)
-  val make_from_environment : wildcard_probability:float -> Sensors_def.sensors Environment.t -> t
+  val make_from_environment : wildcard_probability:float -> sensors Environment.t -> t
 
   (** Returns the number of wildcards in the given condition. *)
   val genericity : t -> int
 
   (** Does the given condition match the given environment? *)
-  val matches : t -> Sensors_def.sensors Environment.t -> bool
+  val matches : t -> sensors Environment.t -> bool
 
   (** Is the given condition more general than the given reference condition?
       A condition is more general if it has higher genericity (i.e. a higher
@@ -33,7 +33,7 @@ module type S = sig
   val clone_with_mutation :
     mutation_probability:float ->
     wildcard_probability:float ->
-    ?environment:Sensors_def.sensors Environment.t ->
+    ?environment:sensors Environment.t ->
     t ->
     t
 
@@ -43,7 +43,7 @@ module type S = sig
   val crossover_with_mutation :
     mutation_probability:float ->
     wildcard_probability:float ->
-    ?environment:Sensors_def.sensors Environment.t ->
+    ?environment:sensors Environment.t ->
     t ->
     t ->
     t * t

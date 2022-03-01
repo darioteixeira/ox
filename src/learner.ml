@@ -7,10 +7,9 @@ module Map = MoreLabels.Map
 
 include Learner_intf
 
-module Make (Sensors_def : Sensors.DEF) (Action : Action.S) : S with module Sensors_def = Sensors_def and module Action = Action =
+module Make (Sensors_def : Sensors.DEF) (A : Action.S) : S with type sensors = Sensors_def.sensors and type action = A.t =
 struct
-  module Sensors_def = Sensors_def
-  module Action = Action
+  module Action = Action.Make_jsonable (A)
   module Condition = Condition.Make (Sensors_def)
   module Classifier = Classifier.Make (Condition) (Action)
   module Action_map = Map.Make (Action)
@@ -18,13 +17,17 @@ struct
   module Classifier_map = Map.Make (Classifier)
   module Classifier_set = Set.Make (Classifier)
 
+  type sensors = Sensors_def.sensors
+
+  type action = Action.t
+
   type population = {
     set : Classifier_set.t;
     numerosity : int; (* Note that numerosity may be different from set cardinality *)
   }
 
   type previous = {
-    previous_environment: Sensors_def.sensors Environment.t;
+    previous_environment: sensors Environment.t;
     previous_action_set : Classifier_set.t;
     previous_reward : float;
   }
@@ -40,9 +43,9 @@ struct
     config : Config.t;
     current_time : int;
     population : population;
-    environment: Sensors_def.sensors Environment.t;
+    environment: sensors Environment.t;
     action_set : Classifier_set.t;
-    best_action_with_prediction : (Action.t * float) Lazy.t;
+    best_action_with_prediction : (action * float) Lazy.t;
     previous : previous option;
   }
 

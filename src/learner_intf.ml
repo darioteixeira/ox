@@ -3,8 +3,8 @@
     {!S.create} function. Afterwards, and until some termination condition
     is satisfied, one successively invokes the {!S.iterate} function. *)
 module type S = sig
-  module Sensors_def : Sensors.DEF
-  module Action : Action.S
+  type sensors
+  type action
 
   type t
   (** An XCS learner. *)
@@ -19,7 +19,7 @@ module type S = sig
   val update_config : config:Config.t -> t -> unit
   (** Updates the configuration of the given learner. *)
 
-  val iterate : t -> Sensors_def.sensors Environment.t -> (Action.t -> float * bool) -> Action.t * float * bool
+  val iterate : t -> sensors Environment.t -> (action -> float * bool) -> action * float * bool
   (** [iterate learner environment handle_action] starts by feeding the environment to the learner,
       which responds with the action it deems appropriate. This action is then given to the function
       [handle_action], which must return a pair consisting of a suitable reward and a boolean
@@ -37,7 +37,7 @@ module type S = sig
   (** Raised if {!provide_environment} is invoked on a learner which is expecting
       an invocation of {!provide_feedback} instead. *)
 
-  val provide_environment : t -> Sensors_def.sensors Environment.t -> Action.t
+  val provide_environment : t -> sensors Environment.t -> action
   (** [provide_environment learner environment] feeds the current environment to the learner,
       returning the learner's recommended {!Action}. Note that the learner's internal state
       is modified. (Raises {!Expected_feedback} if the learner expects an invocation of

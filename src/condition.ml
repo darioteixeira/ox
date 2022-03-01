@@ -17,16 +17,16 @@ module Groups = struct
     | ( :: ) : 'a Locus.t array * 'b t -> ('a array * 'b) t
 end
 
-module Make (Sensors_def : Sensors.DEF) : S with module Sensors_def = Sensors_def = struct
+module Make (Sensors_def : Sensors.DEF) : S with type sensors = Sensors_def.sensors = struct
 
-  module Sensors_def = Sensors_def
+  type sensors = Sensors_def.sensors
 
   type 'a condition = {
     groups : 'a Groups.t;
     genericity : int; (* Cached computed value: number of wildcards in the groups. *)
   }
 
-  type t = Sensors_def.sensors condition
+  type t = sensors condition
 
   let make_from_environment ~wildcard_probability environment =
     let rec loop : type a. a Sensors.t -> a Environment.t -> a condition =

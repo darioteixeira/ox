@@ -1,15 +1,14 @@
 module type S = sig
-  module Condition : Condition.S
-  module Action : Action.S
-
   type identifier
+  type condition
+  type action
 
   type t = private {
     identifier : identifier;
     (** This identifier is computed from the [condition] and [action]. *)
-    condition : Condition.t;
+    condition : condition;
     (** Environmental state(s) which the classifier matches. *)
-    action : Action.t;
+    action : action;
     (** Action proposed by the classifier upon a match. *)
     mutable prediction : float;
     (** Parameter [p]: Estimates the expected reward if the action is taken. *)
@@ -31,8 +30,8 @@ module type S = sig
 
   (** Creates a fresh classifier with the provided parameters. *)
   val make :
-    condition:Condition.t ->
-    action:Action.t ->
+    condition:condition ->
+    action:action ->
     prediction:float ->
     prediction_error:float ->
     fitness:float ->
@@ -58,8 +57,8 @@ module type S = sig
 
   (** Returns a fresh classifier using the provided classifier as template. *)
   val clone :
-    ?condition:Condition.t ->
-    ?action:Action.t ->
+    ?condition:condition ->
+    ?action:action ->
     ?prediction:float ->
     ?prediction_error:float ->
     ?fitness:float ->
