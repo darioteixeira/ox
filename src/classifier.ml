@@ -1,10 +1,10 @@
 include Classifier_intf
 
-module Make (Condition : Condition.S) (Action : Action.JSONABLE) : S with type condition = Condition.t and type action = Action.t = struct
+module Make (Condition : Condition.S) (Action : Action.S) : S with type condition = Condition.t and type action = Action.t = struct
 
-  type identifier = string
-  type condition = Condition.t
-  type action = Action.t
+  type identifier = string [@@deriving yojson]
+  type condition = Condition.t [@@deriving yojson]
+  type action = Action.t [@@deriving yojson]
 
   type t = {
     identifier : identifier;
@@ -18,7 +18,7 @@ module Make (Condition : Condition.S) (Action : Action.JSONABLE) : S with type c
     mutable avg_action_set_size : float;
     mutable numerosity : int;
     mutable accuracy : float;
-  }
+  } [@@deriving yojson]
 
   let make_identifier ~condition ~action =
     Printf.sprintf "%s-%s" (Condition.to_string condition) (Action.to_string action)

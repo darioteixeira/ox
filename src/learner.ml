@@ -7,53 +7,112 @@ module Map = MoreLabels.Map
 
 include Learner_intf
 
-module Make (Sensors_def : Sensors.DEF) (A : Action.S) : S with type sensors = Sensors_def.sensors and type action = A.t =
+module Make (Sensors_def : Sensors.DEF) (Action : Action.S) : S with type sensors = Sensors_def.sensors and type action = Action.t =
 struct
-  module Action = Action.Make_jsonable (A)
   module Condition = Condition.Make (Sensors_def)
   module Classifier = Classifier.Make (Condition) (Action)
   module Action_map = Map.Make (Action)
   module Action_set = Set.Make (Action)
   module Classifier_map = Map.Make (Classifier)
-  module Classifier_set = Set.Make (Classifier)
+
+  module Classifier_set = struct
+    include Set.Make (Classifier)
+
+    let to_yojson set =
+      `List (fold set ~init:[] ~f:(fun cl acc -> Classifier.to_yojson cl :: acc))
+
+    let of_yojson json =
+      match json with
+      | `List l ->
+          Result.map_list ~f:Classifier.of_yojson l
+          |> Result.map of_list
+      | _ ->
+          Error "Classifier_set.t"
+  end
 
   type sensors = Sensors_def.sensors
 
   type action = Action.t
 
+  type environment = sensors Environment.t
+
+  let environment_to_yojson environment =
+    let rec loop : type a. a Sensors.t -> a Environment.t -> Yojson.Safe.t list =
+      fun sensors environment ->
+        match sensors, environment with
+        | Sensors.[], Environment.[] ->
+            []
+        | Sensors.(hd_sensor :: tl_sensors), Environment.(hd_environment :: tl_environment) ->
+            let (module Sensor) = hd_sensor in
+            let hd = `List Array.(map ~f:Sensor.to_yojson hd_environment |> to_list) in
+            let tl = loop tl_sensors tl_environment in
+            hd :: tl
+    in
+    `List (loop Sensors_def.sensors environment)
+
+  let environment_of_yojson = function
+    | `List jsons ->
+        let rec loop : type a. a Sensors.t -> Yojson.Safe.t list -> (a Environment.t, string) result =
+          fun sensors jsons ->
+            match sensors, jsons with
+            | Sensors.[], [] ->
+                Ok Environment.[]
+            | Sensors.(hd_sensor :: tl_sensors), (`List hd_json :: tl_jsons) ->
+                let (module Sensor) = hd_sensor in
+                let (let*) = Result.bind in
+                let* hd = Result.map_list ~f:Sensor.of_yojson hd_json |> Result.map Array.of_list in
+                let* tl = loop tl_sensors tl_jsons in
+                Ok Environment.(hd :: tl)
+            | _ ->
+                Error "Learner.environment"
+        in
+        loop Sensors_def.sensors jsons
+    | _ ->
+        Error "Learner.environment"
+
   type population = {
     set : Classifier_set.t;
     numerosity : int; (* Note that numerosity may be different from set cardinality *)
-  }
+  } [@@deriving yojson]
 
   type previous = {
-    previous_environment: sensors Environment.t;
+    previous_environment: environment;
     previous_action_set : Classifier_set.t;
     previous_reward : float;
-  }
+  } [@@deriving yojson]
 
   type ready_for_environment = {
     config : Config.t;
     current_time : int;
     population : population;
     previous : previous option;
-  }
+  } [@@deriving yojson]
+
+  type best_action_with_prediction = (Action.t * float) Lazy.t
+
+  let best_action_with_prediction_to_yojson v =
+    [%derive.to_yojson: Action.t * float] (Lazy.force v)
+
+  let best_action_with_prediction_of_yojson yojson =
+    [%derive.of_yojson: Action.t * float] yojson
+    |> Result.map Lazy.from_val
 
   type ready_for_feedback = {
     config : Config.t;
     current_time : int;
     population : population;
-    environment: sensors Environment.t;
+    environment: environment;
     action_set : Classifier_set.t;
-    best_action_with_prediction : (action * float) Lazy.t;
+    best_action_with_prediction : best_action_with_prediction;
     previous : previous option;
-  }
+  } [@@deriving yojson]
 
   type ready_for =
     | Ready_for_environment of ready_for_environment
     | Ready_for_feedback of ready_for_feedback
+    [@@deriving yojson]
 
-  type t = ready_for ref
+  type t = ready_for ref [@@deriving yojson]
 
   exception Expected_environment
 

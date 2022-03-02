@@ -66,6 +66,12 @@ module type S = sig
       See {!to_string} for details concerning safe usage. *)
   val of_string : ?intra_group_separator:char -> ?inter_group_separator:char -> string -> t
 
+  (** JSON serialisation. *)
+  val to_yojson : t -> Yojson.Safe.t
+
+  (** JSON deserialisation. *)
+  val of_yojson : Yojson.Safe.t -> (t, string) result
+
   (** Standard equality function. *)
   val equal : t -> t -> bool
 end

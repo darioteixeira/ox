@@ -4,6 +4,7 @@
     is satisfied, one successively invokes the {!S.iterate} function. *)
 module type S = sig
   type sensors
+
   type action
 
   type t
@@ -50,4 +51,10 @@ module type S = sig
       whether this is the final step. For single-step problems, [is_final_step] is always [true].
       Note that the learner's internal state is modified. (Raises {!Expected_environment}
       if the learner expects an invocation of {!provide_environment} instead.)*)
+
+  (** {1 JSON (de)serialisation } *)
+
+  val to_yojson : t -> Yojson.Safe.t
+
+  val of_yojson : Yojson.Safe.t -> (t, string) result
 end

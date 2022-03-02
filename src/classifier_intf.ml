@@ -79,4 +79,8 @@ module type S = sig
   val fitness : t -> float
 
   val numerosity : t -> int
+
+  val to_yojson : t -> Yojson.Safe.t
+
+  val of_yojson : Yojson.Safe.t -> (t, string) result
 end

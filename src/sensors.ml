@@ -5,6 +5,8 @@ module type SENSOR = sig
   val random : ?exclude:t -> unit -> t
   val to_string : t -> string
   val of_string : string -> t
+  val to_yojson : t -> Yojson.Safe.t
+  val of_yojson : Yojson.Safe.t -> (t, string) result
 end
 
 type 'a sensor = (module SENSOR with type t = 'a)
@@ -20,7 +22,7 @@ module type DEF = sig
 end
 
 module Binary = struct
-  type t = bool
+  type t = bool [@@deriving yojson]
 
   let equal = Bool.equal
 
@@ -74,6 +76,13 @@ module Ternary = struct
     | "1" -> True
     | "_" -> Unknown
     | str -> invalid_arg ("Sensors.Ternary.of_string: " ^ str)
+
+  let to_yojson v =
+    `String (to_string v)
+
+  let of_yojson = function
+    | `String str -> Ok (of_string str)
+    | _ -> Error "Sensors.Ternary.t"
 end
 
 let binary = (module Binary : SENSOR with type t = Binary.t)

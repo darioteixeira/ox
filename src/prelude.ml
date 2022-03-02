@@ -42,6 +42,21 @@ module ArrayLabels = struct
         (loop acc 1, dest)
 end
 
+module Result = struct
+  include Result
+
+  let map_list ~f l =
+    let rec loop acc = function
+      | [] ->
+          Ok (List.rev acc)
+      | hd :: tl ->
+          match f hd with
+          | Ok v -> loop (v :: acc) tl
+          | (Error _) as err -> err
+    in
+    loop [] l
+end
+
 module Set = struct
   module type OrderedType = MoreLabels.Set.OrderedType
 

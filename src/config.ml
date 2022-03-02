@@ -2,7 +2,7 @@ type classifier_initialization = {
   initial_prediction : float;
   initial_prediction_error : float;
   initial_fitness : float;
-}
+} [@@deriving yojson]
 
 type t = {
   max_population_size : int;
@@ -24,7 +24,7 @@ type t = {
   do_offspring_subsumption : bool;
   do_action_set_subsumption : bool;
   classifier_initialization : classifier_initialization;
-}
+} [@@deriving yojson]
 
 let default_classifier_initialization = {
   initial_prediction = 0.;

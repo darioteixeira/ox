@@ -10,7 +10,7 @@ type classifier_initialization = {
   initial_fitness : float;
   (** Parameter [F_I]: Initial value for the fitness parameter [F] in new classifiers.
       (Usually 0) *)
-}
+} [@@deriving yojson]
 
 type t = {
   max_population_size : int;
@@ -83,7 +83,7 @@ type t = {
       action sets are to be tested for subsuming classifiers. *)
   classifier_initialization : classifier_initialization;
   (** Initial parameters for new classifiers. *)
-}
+} [@@deriving yojson]
 
 val default_classifier_initialization : classifier_initialization
 

@@ -5,6 +5,8 @@ module type SENSOR = sig
   val random : ?exclude:t -> unit -> t
   val to_string : t -> string
   val of_string : string -> t
+  val to_yojson : t -> Yojson.Safe.t
+  val of_yojson : Yojson.Safe.t -> (t, string) result
 end
 
 type 'a sensor = (module SENSOR with type t = 'a)

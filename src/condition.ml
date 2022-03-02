@@ -197,6 +197,8 @@ module Make (Sensors_def : Sensors.DEF) : S with type sensors = Sensors_def.sens
     let condition4 = clone_with_mutation ~mutation_probability ~wildcard_probability ?environment condition4 in
     (condition3, condition4)
 
+  let default_intra_group_separator = ','
+
   let default_inter_group_separator = ';'
 
   let wildcard = "#"
@@ -264,6 +266,13 @@ module Make (Sensors_def : Sensors.DEF) : S with type sensors = Sensors_def.sens
     in
     let groups = String.split_on_char inter_group_separator str in
     loop Sensors_def.sensors groups
+
+  let to_yojson v =
+    `String (to_string ~intra_group_separator:default_intra_group_separator v)
+
+  let of_yojson = function
+    | `String str -> Ok (of_string ~intra_group_separator:default_intra_group_separator str)
+    | _ -> Error "Condition.t"
 
   let equal c1 c2 =
     let rec loop : type a. a Sensors.t -> a Groups.t -> a Groups.t -> bool =
