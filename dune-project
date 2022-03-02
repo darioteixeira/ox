@@ -13,8 +13,11 @@
   (name oxen)
   (synopsis "OCaml implementation of the XCS learning classifier system")
   (depends
+    (alcotest :with-test)
     (dune :build)
     (fmt (>= 0.9.0))
     (logs (>= 0.7.0))
+    (ppx_deriving_yojson (>= 3.6.1))
+    (yojson (>= 1.7.0))
   )
 )

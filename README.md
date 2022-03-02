@@ -11,7 +11,7 @@ Building
 opam update
 opam switch create . 4.13.1 --no-install
 eval $(opam env)
-opam install . --deps-only --locked
+opam install . --deps-only --with-test --locked
 ```
 
 To update the OPAM lock file with new or more recent packages, follow this recipe:
@@ -19,7 +19,7 @@ To update the OPAM lock file with new or more recent packages, follow this recip
 ```
 opam update
 opam upgrade
-opam install . --deps-only
+opam install . --deps-only --with-test
 opam lock .
 ```
 

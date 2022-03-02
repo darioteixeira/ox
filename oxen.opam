@@ -8,9 +8,12 @@ license: "ISC"
 homepage: "https://github.com/darioteixeira/oxen"
 bug-reports: "https://github.com/darioteixeira/oxen/issues"
 depends: [
+  "alcotest" {with-test}
   "dune" {>= "2.9" & build}
   "fmt" {>= "0.9.0"}
   "logs" {>= "0.7.0"}
+  "ppx_deriving_yojson" {>= "3.6.1"}
+  "yojson" {>= "1.7.0"}
   "odoc" {with-doc}
 ]
 build: [
