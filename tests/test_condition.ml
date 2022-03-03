@@ -4,13 +4,13 @@ module Binary = Sensors.Binary
 module Ternary = Sensors.Ternary
 
 module Sensors_def1 = struct
-  type sensors = Binary.t array * unit
+  type sensors = Binary.t array -> unit
 
   let sensors = Sensors.[ binary ]
 end
 
 module Sensors_def2 = struct
-  type sensors = Binary.t array * (Ternary.t array * unit)
+  type sensors = Binary.t array -> Ternary.t array -> unit
 
   let sensors = Sensors.[ binary; ternary ]
 end

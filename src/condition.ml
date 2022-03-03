@@ -14,7 +14,7 @@ end
 module Groups = struct
   type _ t =
     | [] : unit t
-    | ( :: ) : 'a Locus.t array * 'b t -> ('a array * 'b) t
+    | ( :: ) : 'a Locus.t array * 'b t -> ('a array -> 'b) t
 end
 
 module Make (Sensors_def : Sensors.DEF) : S with type sensors = Sensors_def.sensors = struct

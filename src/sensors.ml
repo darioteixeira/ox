@@ -13,7 +13,7 @@ type 'a sensor = (module SENSOR with type t = 'a)
 
 type _ t =
   | [] : unit t
-  | ( :: ) : 'a sensor * 'b t -> ('a array * 'b) t
+  | ( :: ) : 'a sensor * 'b t -> ('a array -> 'b) t
 
 module type DEF = sig
   type sensors
