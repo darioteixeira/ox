@@ -55,6 +55,8 @@ module type S = sig
   (** {1 JSON (de)serialisation } *)
 
   val to_yojson : t -> Yojson.Safe.t
+  (** JSON serialisation. *)
 
   val of_yojson : Yojson.Safe.t -> (t, string) result
+  (** JSON deserialisation. *)
 end

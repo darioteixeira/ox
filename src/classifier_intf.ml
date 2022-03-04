@@ -28,7 +28,6 @@ module type S = sig
     (** Parameter [k]: Accuracy of the classifier. Note that this is a cached computed quantity based on the prediction error [ε]. *)
   }
 
-  (** Creates a fresh classifier with the provided parameters. *)
   val make :
     condition:condition ->
     action:action ->
@@ -41,8 +40,8 @@ module type S = sig
     numerosity:int ->
     accuracy:float ->
     t
+  (** Creates a fresh classifier with the provided parameters. *)
 
-  (** Updates the given classifier in-place. *)
   val update :
     ?prediction:float ->
     ?prediction_error:float ->
@@ -54,8 +53,8 @@ module type S = sig
     ?accuracy:float ->
     t ->
     unit
+  (** Updates the given classifier in-place. *)
 
-  (** Returns a fresh classifier using the provided classifier as template. *)
   val clone :
     ?condition:condition ->
     ?action:action ->
@@ -69,6 +68,7 @@ module type S = sig
     ?accuracy:float ->
     t ->
     t
+  (** Returns a fresh classifier using the provided classifier as template. *)
 
   val compare : t -> t -> int
 

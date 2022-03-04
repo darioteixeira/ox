@@ -86,5 +86,7 @@ type t = {
 } [@@deriving yojson]
 
 val default_classifier_initialization : classifier_initialization
+(** Default value for {!classifier_initialization}. *)
 
 val default : t
+(** Default configuration, which includes {!default_classifier_initialization}. *)

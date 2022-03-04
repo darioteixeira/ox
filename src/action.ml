@@ -1,3 +1,4 @@
+(** This is the signature that all modules encapsulating an action must satisfy. *)
 module type S = sig
   type t
 

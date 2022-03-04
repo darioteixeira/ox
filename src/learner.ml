@@ -134,6 +134,10 @@ struct
 
   let num_actions = Action_set.cardinal all_actions
 
+  (************************************************************************************************)
+  (* Parent selection methods.                                                                    *)
+  (************************************************************************************************)
+
   let select_via_roulette_wheel ~quantity ~get_weight set =
     Log.debug (fun m -> m "select_via_roulette_wheel: quantity=%d, #set=%d" quantity (Classifier_set.cardinal set));
     let (sum, map) =
