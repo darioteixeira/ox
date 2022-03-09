@@ -545,7 +545,8 @@ struct
   let update_classifier_fitness ~config ~total_accuracy (Classifier.{ fitness; numerosity; accuracy; _ } as classifier) =
     Log.debug (fun m -> m "update_classifier_fitness: classifier=%s" (Classifier.identifier classifier));
     let Config.{ learning_rate; _ } = config in
-    let fitness = fitness +. learning_rate *. (accuracy *. float_of_int numerosity /. total_accuracy -. fitness) in
+    let relative_accuracy = accuracy *. float_of_int numerosity /. total_accuracy in
+    let fitness = fitness +. learning_rate *. (relative_accuracy -. fitness) in
     Classifier.update ~fitness classifier
 
   let update_action_set ~config ~payoff action_set population =
