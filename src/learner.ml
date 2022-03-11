@@ -524,17 +524,18 @@ struct
     let experience' = float_of_int experience in
     let payoff_diff = payoff -. prediction in
     let error_diff = Float.abs payoff_diff -. prediction_error in
+    let numerosity_diff = action_set_numerosity -. avg_action_set_size in
     let (prediction, prediction_error, avg_action_set_size) =
       match experience' < 1. /. learning_rate with
       | true ->
           let prediction_error = prediction_error +. error_diff /. experience' in
           let prediction = prediction +. payoff_diff /. experience' in
-          let avg_action_set_size = avg_action_set_size +. (action_set_numerosity -. avg_action_set_size) /. experience' in
+          let avg_action_set_size = avg_action_set_size +. numerosity_diff /. experience' in
           (prediction, prediction_error, avg_action_set_size)
       | false ->
           let prediction_error = prediction_error +. learning_rate *. error_diff in
           let prediction = prediction +. learning_rate *. payoff_diff in
-          let avg_action_set_size = avg_action_set_size +. learning_rate *. (action_set_numerosity -. avg_action_set_size) in
+          let avg_action_set_size = avg_action_set_size +. learning_rate *. numerosity_diff in
           (prediction, prediction_error, avg_action_set_size)
     in
     let accuracy =
