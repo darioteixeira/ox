@@ -522,16 +522,17 @@ struct
     let Classifier.{ experience; prediction; prediction_error; avg_action_set_size; _ } = classifier in
     let experience = experience + 1 in
     let experience' = float_of_int experience in
+    let payoff_diff = payoff -. prediction in
     let (prediction, prediction_error, avg_action_set_size) =
       match experience' < 1. /. learning_rate with
       | true ->
-          let prediction_error = prediction_error +. (Float.abs (payoff -. prediction) -. prediction_error) /. experience' in
-          let prediction = prediction +. (payoff -. prediction) /. experience' in
+          let prediction_error = prediction_error +. (Float.abs payoff_diff -. prediction_error) /. experience' in
+          let prediction = prediction +. payoff_diff /. experience' in
           let avg_action_set_size = avg_action_set_size +. (action_set_numerosity -. avg_action_set_size) /. experience' in
           (prediction, prediction_error, avg_action_set_size)
       | false ->
-          let prediction_error = prediction_error +. learning_rate *. (Float.abs (payoff -. prediction) -. prediction_error) in
-          let prediction = prediction +. learning_rate *. (payoff -. prediction) in
+          let prediction_error = prediction_error +. learning_rate *. (Float.abs payoff_diff -. prediction_error) in
+          let prediction = prediction +. learning_rate *. payoff_diff in
           let avg_action_set_size = avg_action_set_size +. learning_rate *. (action_set_numerosity -. avg_action_set_size) in
           (prediction, prediction_error, avg_action_set_size)
     in
