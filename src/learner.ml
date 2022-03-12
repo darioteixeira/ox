@@ -630,7 +630,8 @@ struct
         let population =
           match previous with
           | Some { previous_environment; previous_action_set; previous_reward } ->
-              let payoff = previous_reward +. discount_factor *. snd (Lazy.force best_action_with_prediction) in
+              let max_prediction = snd (Lazy.force best_action_with_prediction) in
+              let payoff = previous_reward +. discount_factor *. max_prediction in
               let (previous_action_set', population) = update_action_set ~config ~payoff previous_action_set population in
               run_genetic_algorithm ~config ~current_time ~prediction:payoff previous_action_set' population previous_environment
           | None ->
