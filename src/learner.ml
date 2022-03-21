@@ -122,7 +122,7 @@ struct
   (* Logging and formatting.                                                                      *)
   (************************************************************************************************)
 
-  let logs_src = Logs.Src.create "oxen"
+  let logs_src = Logs.Src.create "ox"
 
   module Log = (val Logs.src_log logs_src)
 

@@ -4,8 +4,8 @@ synopsis: "OCaml implementation of the XCS learning classifier system"
 maintainer: ["Dario Teixeira <dario.teixeira@nleyten.com>"]
 authors: ["Dario Teixeira <dario.teixeira@nleyten.com>"]
 license: "ISC"
-homepage: "https://github.com/darioteixeira/oxen"
-bug-reports: "https://github.com/darioteixeira/oxen/issues"
+homepage: "https://github.com/darioteixeira/ox"
+bug-reports: "https://github.com/darioteixeira/ox/issues"
 depends: [
   "base-threads" {= "base"}
   "base-unix" {= "base"}
@@ -46,8 +46,8 @@ build: [
   ]
   ["dune" "install" "-p" name "--create-install-files" name]
 ]
-dev-repo: "git+https://github.com/darioteixeira/oxen.git"
-name: "oxen"
+dev-repo: "git+https://github.com/darioteixeira/ox.git"
+name: "ox"
 pin-depends: [
   "ppx_deriving_yojson.3.6.1"
   "git+ssh://git@github.com/darioteixeira/ppx_deriving_yojson.git"

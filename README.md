@@ -1,5 +1,5 @@
-Oxen
-====
+Ox
+==
 
 OCaml implementation of the XCS learning classifier system[^1][^2].
 

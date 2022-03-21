@@ -1,16 +1,16 @@
 (lang dune 2.9)
-(name oxen)
+(name ox)
 (version 1.0~alpha1)
 (maintainers "Dario Teixeira <dario.teixeira@nleyten.com>")
 (authors "Dario Teixeira <dario.teixeira@nleyten.com>")
-(source (github darioteixeira/oxen))
+(source (github darioteixeira/ox))
 (license ISC)
 (generate_opam_files true)
 (implicit_transitive_deps false)
 (formatting disabled)
 
 (package
-  (name oxen)
+  (name ox)
   (synopsis "OCaml implementation of the XCS learning classifier system")
   (depends
     (alcotest :with-test)

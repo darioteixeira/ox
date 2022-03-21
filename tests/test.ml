@@ -1,4 +1,4 @@
 let () =
-  Alcotest.run "Oxen" [
+  Alcotest.run "Ox" [
     ("Condition", Test_condition.test_cases);
   ]

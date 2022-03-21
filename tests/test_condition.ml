@@ -1,5 +1,5 @@
-module Environment = Oxen.Environment
-module Sensors = Oxen.Sensors
+module Environment = Ox.Environment
+module Sensors = Ox.Sensors
 module Binary = Sensors.Binary
 module Ternary = Sensors.Ternary
 
@@ -15,9 +15,9 @@ module Sensors_def2 = struct
   let sensors = Sensors.[ binary; ternary ]
 end
 
-module C1 = Oxen__Condition.Make (Sensors_def1)
+module C1 = Ox__Condition.Make (Sensors_def1)
 
-module C2 = Oxen__Condition.Make (Sensors_def2)
+module C2 = Ox__Condition.Make (Sensors_def2)
 
 let testable_c1 = Alcotest.testable (fun fmt c1 -> Format.pp_print_string fmt @@ C1.to_string c1) C1.equal
 

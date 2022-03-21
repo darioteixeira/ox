@@ -1,4 +1,4 @@
 (test
   (name test)
-  (libraries alcotest fmt oxen)
+  (libraries alcotest fmt ox)
 )
