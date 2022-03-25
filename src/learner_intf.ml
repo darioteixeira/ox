@@ -17,6 +17,9 @@ module type S = sig
   val create : config:Config.t -> t
   (** Create a new learner using the given {!Config.t}. *)
 
+  val get_config : t -> Config.t
+  (** Returns the current configuration of the given learner. *)
+
   val update_config : config:Config.t -> t -> unit
   (** Updates the configuration of the given learner. *)
 

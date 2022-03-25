@@ -576,6 +576,12 @@ struct
       previous = None;
     }
 
+  let get_config learner =
+    Log.debug (fun m -> m "get_config");
+    match !learner with
+    | Ready_for_feedback { config; _ } -> config
+    | Ready_for_environment { config; _ } -> config
+
   let update_config ~config learner =
     Log.debug (fun m -> m "update_config");
     match !learner with
