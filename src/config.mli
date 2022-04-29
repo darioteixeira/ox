@@ -85,7 +85,7 @@ type t = {
   (** Initial parameters for new classifiers. *)
 } [@@deriving yojson]
 
-val default_classifier_initialization : classifier_initialization
+val classifier_initialization_default : classifier_initialization
 (** Default value for {!classifier_initialization}. *)
 
 val default : t

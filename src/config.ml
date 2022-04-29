@@ -26,7 +26,7 @@ type t = {
   classifier_initialization : classifier_initialization;
 } [@@deriving yojson]
 
-let default_classifier_initialization = {
+let classifier_initialization_default = {
   initial_prediction = 0.;
   initial_prediction_error = 0.;
   initial_fitness = 0.;
@@ -51,5 +51,5 @@ let default = {
   min_actions = None;
   do_offspring_subsumption = true;
   do_action_set_subsumption = true;
-  classifier_initialization = default_classifier_initialization;
+  classifier_initialization = classifier_initialization_default;
 }
