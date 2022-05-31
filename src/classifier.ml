@@ -55,18 +55,23 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
   let clone
     ?condition ?action ?prediction ?prediction_error ?fitness ?last_occurrence
     ?experience ?avg_action_set_size ?numerosity ?accuracy
-    classifier = { classifier with
-      condition = Option.value ~default:classifier.condition condition;
-      action = Option.value ~default:classifier.action action;
-      prediction = Option.value ~default:classifier.prediction prediction;
-      prediction_error = Option.value ~default:classifier.prediction_error prediction_error;
-      fitness = Option.value ~default:classifier.fitness fitness;
-      last_occurrence = Option.value ~default:classifier.last_occurrence last_occurrence;
-      experience = Option.value ~default:classifier.experience experience;
-      avg_action_set_size = Option.value ~default:classifier.avg_action_set_size avg_action_set_size;
-      numerosity = Option.value ~default:classifier.numerosity numerosity;
-      accuracy = Option.value ~default:classifier.accuracy accuracy;
-    }
+    classifier =
+      let condition = Option.value ~default:classifier.condition condition in
+      let action = Option.value ~default:classifier.action action in
+      let identifier = make_identifier ~condition ~action in
+      {
+        identifier;
+        condition;
+        action;
+        prediction = Option.value ~default:classifier.prediction prediction;
+        prediction_error = Option.value ~default:classifier.prediction_error prediction_error;
+        fitness = Option.value ~default:classifier.fitness fitness;
+        last_occurrence = Option.value ~default:classifier.last_occurrence last_occurrence;
+        experience = Option.value ~default:classifier.experience experience;
+        avg_action_set_size = Option.value ~default:classifier.avg_action_set_size avg_action_set_size;
+        numerosity = Option.value ~default:classifier.numerosity numerosity;
+        accuracy = Option.value ~default:classifier.accuracy accuracy;
+      }
 
   let compare { identifier = id1; _ } { identifier = id2; _ } =
     String.compare id1 id2
