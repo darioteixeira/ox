@@ -1,34 +1,14 @@
 open Prelude
 
-module Array = ArrayLabels
-module List = ListLabels
-module Hashtbl = MoreLabels.Hashtbl
-module Map = MoreLabels.Map
-
 include Learner_intf
 
 module Make (Sensors_def : Sensors.DEF) (Action : Action.S) : S with type sensors = Sensors_def.sensors and type action = Action.t =
 struct
   module Condition = Condition.Make (Sensors_def)
   module Classifier = Classifier.Make (Condition) (Action)
+  module Identifier_dict = Hashtbl.Make (Identifier)
   module Action_map = Map.Make (Action)
   module Action_set = Set.Make (Action)
-  module Classifier_map = Map.Make (Classifier)
-
-  module Classifier_set = struct
-    include Set.Make (Classifier)
-
-    let to_yojson set =
-      `List (fold set ~init:[] ~f:(fun cl acc -> Classifier.to_yojson cl :: acc))
-
-    let of_yojson json =
-      match json with
-      | `List l ->
-          Result.map_list ~f:Classifier.of_yojson l
-          |> Result.map of_list
-      | _ ->
-          Error "Classifier_set.t"
-  end
 
   type sensors = Sensors_def.sensors
 
@@ -71,13 +51,13 @@ struct
         Error "Learner.environment"
 
   type population = {
-    set : Classifier_set.t;
+    set : Classifier.t Identifier_dict.t;
     numerosity : int; (* Note that numerosity may be different from set cardinality *)
   } [@@deriving yojson]
 
   type previous = {
     previous_environment: environment;
-    previous_action_set : Classifier_set.t;
+    previous_action_set : Classifier.t Identifier_dict.t;
     previous_reward : float;
   } [@@deriving yojson]
 
@@ -102,7 +82,7 @@ struct
     current_time : int;
     population : population;
     environment: environment;
-    action_set : Classifier_set.t;
+    action_set : Classifier.t Identifier_dict.t;
     best_action_with_prediction : best_action_with_prediction;
     previous : previous option;
   } [@@deriving yojson]
@@ -139,64 +119,61 @@ struct
   (************************************************************************************************)
 
   let select_via_roulette_wheel ~quantity ~get_weight set =
-    Log.debug (fun m -> m "select_via_roulette_wheel: quantity=%d, #set=%d" quantity (Classifier_set.cardinal set));
-    let (sum, map) =
-      Classifier_set.fold set ~init:(0., Classifier_map.empty) ~f:(fun cl (sum, map) ->
+    Log.debug (fun m -> m "select_via_roulette_wheel: quantity=%d, #set=%d" quantity (Identifier_dict.length set));
+    let weights = Identifier_dict.(create @@ length set) in
+    let sum =
+      Identifier_dict.fold set ~init:0. ~f:(fun ~key ~data:cl sum ->
         let weight = get_weight cl in
-        (sum +. weight, Classifier_map.add ~key:cl ~data:weight map)
-      )
+        Identifier_dict.add weights ~key ~data:weight;
+        sum +. weight
+    )
     in
-    let rec get_next sum map () =
-      let target_count = sum *. Random.float 1. in
-      let rec loop_until_target count seq =
-        match seq () with
-        | Seq.Nil ->
-            Seq.Nil
-        | Seq.Cons ((cl, weight), seq') ->
-            let count = count +. weight in
-            if count > target_count
-            then
-              let sum = sum -. weight in
-              let map = Classifier_map.remove cl map in
-              Seq.Cons (cl, get_next sum map)
-            else
-              loop_until_target count seq'
-      in
-      loop_until_target 0. (Classifier_map.to_seq map)
-    in
-    let rec get_until acc seq = function
+    let rec pick_classifiers acc_cl sum = function
       | 0 ->
-          acc
-      | remaining ->
-          begin match seq () with
-          | Seq.Cons (cl, seq') -> get_until (cl :: acc) seq' (remaining - 1)
-          | Seq.Nil -> acc
-          end
+          acc_cl
+      | n ->
+          let target = Random.float sum in
+          let seq = Identifier_dict.to_seq weights in
+          let rec loop_until_target acc seq =
+            match seq () with
+            | Seq.Nil ->
+                acc_cl
+            | Seq.Cons ((id, weight), seq) ->
+                let acc = acc +. weight in
+                match acc > target with
+                | true ->
+                    let cl = Identifier_dict.find set id in
+                    pick_classifiers (cl :: acc_cl) (sum -. weight) (n - 1)
+                | false ->
+                    loop_until_target acc seq
+          in
+          loop_until_target 0. seq
     in
-    get_until [] (get_next sum map) quantity
+    pick_classifiers [] sum quantity
 
   (************************************************************************************************)
   (* Inserting/removing classifiers from population.                                              *)
   (************************************************************************************************)
 
   (* Routine [INSERT IN POPULATION] from page 267. *)
-  let insert_into_population (Classifier.{ numerosity = n1; _ } as classifier) { set; numerosity } =
+  let insert_into_population (Classifier.{ identifier; numerosity = n1; _ } as classifier) { set; numerosity } =
     Log.debug (fun m ->
-      m "insert_into_population: classifier=%s, #population=%d, numerosity=%d"
-      (Classifier.identifier classifier) (Classifier_set.cardinal set) numerosity
+      m "insert_into_population: classifier=%a, #population=%d, numerosity=%d"
+      Identifier.pp identifier (Identifier_dict.length set) numerosity
     );
-    match Classifier_set.find_opt classifier set with
+    match Identifier_dict.find_opt set identifier with
     | Some (Classifier.{ numerosity = n2; _ } as existing) ->
         Log.debug (fun m -> m "insert_into_population: Classifier already present; updating numerosity.");
         Classifier.update ~numerosity:(n1 + n2) existing;
         { set; numerosity = numerosity + n1 }
     | None ->
         Log.debug (fun m -> m "insert_into_population: Classifier not present; actually inserting.");
-        { set = Classifier_set.add classifier set; numerosity = numerosity + n1 }
+        Identifier_dict.add set ~key:identifier ~data:classifier;
+        { set; numerosity = numerosity + n1 }
 
   (* Routine [DELETE FROM POPULATION] from page 268. *)
   let cull_population ~config ({ set; numerosity } as population) =
-    Log.debug (fun m -> m "cull_population: #set=%d, numerosity=%d" (Classifier_set.cardinal set) numerosity);
+    Log.debug (fun m -> m "cull_population: #set=%d, numerosity=%d" (Identifier_dict.length set) numerosity);
     let Config.{ max_population_size; deletion_threshold; fitness_threshold; _ } = config in
     match numerosity - max_population_size with
     | excess when excess <= 0 ->
@@ -205,7 +182,7 @@ struct
     | excess ->
         Log.debug (fun m -> m "cull_population: Actually culling because excess=%d" excess);
         let avg_population_fitness =
-          let sum = Classifier_set.fold set ~init:0. ~f:(fun Classifier.{ fitness; _} sum -> sum +. fitness) in
+          let sum = Identifier_dict.fold set ~init:0. ~f:(fun ~key:_ ~data:Classifier.{ fitness; _} sum -> sum +. fitness) in
           sum /. float_of_int numerosity
         in
         (* Routine [DELETION VOTE] from page 268. *)
@@ -219,15 +196,16 @@ struct
         in
         let victims = select_via_roulette_wheel ~quantity:excess ~get_weight:culling_vote set in
         let remove_classifier { set; numerosity } = function
-          | Classifier.{ numerosity = 1; _ } as victim ->
-              { set = Classifier_set.remove victim set; numerosity = numerosity - 1 }
+          | Classifier.{ identifier; numerosity = 1; _ } ->
+              Identifier_dict.remove set identifier;
+              { set; numerosity = numerosity - 1 }
           | Classifier.{ numerosity = n; _ } as victim ->
               Classifier.update ~numerosity:(n - 1) victim;
               { set; numerosity = numerosity - 1 }
         in
         let population = List.fold_left victims ~init:population ~f:remove_classifier in
         let avg_population_fitness' =
-          let sum = Classifier_set.fold population.set ~init:0. ~f:(fun Classifier.{ fitness; _} sum -> sum +. fitness) in
+          let sum = Identifier_dict.fold population.set ~init:0. ~f:(fun ~key:_ ~data:Classifier.{ fitness; _} sum -> sum +. fitness) in
           sum /. float_of_int population.numerosity
         in
         Log.debug (fun m ->
@@ -257,7 +235,7 @@ struct
   let subsume_in_action_set ~subsumption_threshold ~prediction_error_threshold action_set population =
     Log.debug (fun m -> m "subsume_in_action_set");
     let best =
-      Classifier_set.fold action_set ~init:None ~f:(fun candidate best ->
+      Identifier_dict.fold action_set ~init:None ~f:(fun ~key:_ ~data:candidate best ->
         let Classifier.{ condition = c_condition; _ } = candidate in
         match could_subsume ~subsumption_threshold ~prediction_error_threshold candidate, best with
         | false, _ ->
@@ -278,12 +256,12 @@ struct
     | None ->
         (action_set, population)
     | Some best ->
-        Classifier_set.fold action_set ~init:(action_set, population) ~f:(fun cl (action_set, population) ->
+        Identifier_dict.fold action_set ~init:(action_set, population) ~f:(fun ~key:identifier ~data:cl (action_set, population) ->
           match Condition.is_more_general ~than:Classifier.(cl.condition) Classifier.(best.condition) with
           | true ->
               Classifier.(update ~numerosity:Classifier.(best.numerosity + cl.numerosity) best);
-              let action_set = Classifier_set.remove cl action_set in
-              let population = { population with set = Classifier_set.remove cl population.set } in
+              Identifier_dict.remove action_set identifier;
+              Identifier_dict.remove population.set identifier;
               (action_set, population)
           | false ->
               (action_set, population)
@@ -291,8 +269,10 @@ struct
 
   let insert_or_subsume ~subsumption_threshold ~prediction_error_threshold ~child ~parent1 ~parent2 population =
     Log.debug (fun m ->
-      m "insert_or_subsume: parent1=%s, parent2=%s, child=%s"
-      (Classifier.identifier parent1) (Classifier.identifier parent2) (Classifier.identifier child)
+      m "insert_or_subsume: parent1=%a, parent2=%a, child=%a"
+        Identifier.pp (Classifier.identifier parent1)
+        Identifier.pp (Classifier.identifier parent2)
+        Identifier.pp (Classifier.identifier child)
     );
     if does_subsume ~subsumption_threshold ~prediction_error_threshold ~subsumer:parent1 ~subsumee:child
     then begin
@@ -317,8 +297,8 @@ struct
 
   (* Routine [RUN GA] from page 265. *)
   let run_genetic_algorithm ~config ~current_time ~prediction action_set population environment =
-    Log.debug (fun m -> m "run_genetic_algorithm: #action_set=%d" (Classifier_set.cardinal action_set));
-    assert (Classifier_set.cardinal action_set <> 0);
+    Log.debug (fun m -> m "run_genetic_algorithm: #action_set=%d" (Identifier_dict.length action_set));
+    assert (Identifier_dict.length action_set <> 0);
     let Config.{
       prediction_error_threshold; age_threshold;
       crossover_probability; wildcard_probability; mutation_probability;
@@ -326,13 +306,13 @@ struct
     } = config
     in
     let (sum_age, sum_numerosity, prediction_error) =
-      let for_each_classifier Classifier.{ prediction_error; last_occurrence; numerosity; _ } (sum_age, sum_numerosity, sum_prediction_error) =
+      let for_each_classifier ~key:_ ~data:Classifier.{ prediction_error; last_occurrence; numerosity; _ } (sum_age, sum_numerosity, sum_prediction_error) =
         let sum_age = sum_age + numerosity * (current_time - last_occurrence) in
         let sum_numerosity = sum_numerosity + numerosity in
         let sum_prediction_error = sum_prediction_error +. prediction_error in
         (sum_age, sum_numerosity, sum_prediction_error)
       in
-      Classifier_set.fold action_set ~init:(0, 0, 0.) ~f:for_each_classifier
+      Identifier_dict.fold action_set ~init:(0, 0, 0.) ~f:for_each_classifier
     in
     let avg_age = float_of_int sum_age /. float_of_int sum_numerosity in
     match avg_age <= age_threshold with
@@ -340,7 +320,7 @@ struct
         Log.debug (fun m -> m "run_genetic_algorithm: avg_age=%2.1f, which is lower than age_threshold=%2.1f" avg_age age_threshold);
         population
     | false ->
-        Classifier_set.iter action_set ~f:(Classifier.update ~last_occurrence:current_time);
+        Identifier_dict.iter action_set ~f:(fun ~key:_ ~data:cl -> Classifier.update ~last_occurrence:current_time cl);
         let (parent1, parent2) =
           match select_via_roulette_wheel ~quantity:2 ~get_weight:Classifier.fitness action_set with
           | [ parent1 ] -> (parent1, parent1)
@@ -359,7 +339,11 @@ struct
         let (child1, child2) =
           match (Random.float 1. < crossover_probability) && not (Classifier.equal parent1 parent2) with
           | true ->
-              Log.debug (fun m -> m "run_genetic_algorithm: Applying crossover between %s and %s" (Classifier.identifier parent1) (Classifier.identifier parent2));
+              Log.debug (fun m ->
+                m "run_genetic_algorithm: Applying crossover between %a and %a"
+                  Identifier.pp (Classifier.identifier parent1)
+                  Identifier.pp (Classifier.identifier parent2)
+              );
               let (condition1, condition2) =
                 Condition.crossover_with_mutation ~mutation_probability ~wildcard_probability ~environment c1 c2
               in
@@ -376,7 +360,11 @@ struct
               in
               (child1, child2)
           | false ->
-              Log.debug (fun m -> m "run_genetic_algorithm: Cloning %s and %s" (Classifier.identifier parent1) (Classifier.identifier parent2));
+              Log.debug (fun m ->
+                m "run_genetic_algorithm: Cloning %a and %a"
+                  Identifier.pp (Classifier.identifier parent1)
+                  Identifier.pp (Classifier.identifier parent2)
+              );
               let condition1 = Condition.clone_with_mutation ~mutation_probability ~wildcard_probability ~environment c1 in
               let condition2 = Condition.clone_with_mutation ~mutation_probability ~wildcard_probability ~environment c2 in
               let child1 =
@@ -387,8 +375,7 @@ struct
               let child2 =
                 Classifier.clone
                   ~condition:condition2 ~action:action2 ~prediction ~prediction_error
-                  ~fitness:(offspring_fitness_multiplier *. f2)
-                  ~experience:0 ~numerosity:1 parent2
+                  ~fitness:(offspring_fitness_multiplier *. f2) ~experience:0 ~numerosity:1 parent2
               in
               (child1, child2)
         in
@@ -434,13 +421,15 @@ struct
     let Config.{ min_actions; _ } = config in
     let effective_min_actions = Option.value ~default:num_actions min_actions in
     let rec loop population =
-      let (match_set, used_actions) =
-        let process_classifier (Classifier.{ condition; action; _ } as cl) (match_set, used_actions) =
+      let match_set = Identifier_dict.create 32 in
+      let used_actions =
+        let process_classifier ~key ~data used_actions =
+          let Classifier.{ condition; action; _ } = data in
           if Condition.matches condition environment
-          then (Classifier_set.add cl match_set, Action_set.add action used_actions)
-          else (match_set, used_actions)
+          then (Identifier_dict.add match_set ~key ~data; Action_set.add action used_actions)
+          else used_actions
         in
-        Classifier_set.fold ~init:(Classifier_set.empty, Action_set.empty) ~f:process_classifier population.set
+        Identifier_dict.fold population.set ~init:Action_set.empty ~f:process_classifier
       in
       match Action_set.cardinal used_actions >= effective_min_actions with
       | true ->
@@ -462,15 +451,15 @@ struct
 
   (* Routine [GENERATE PREDICTION ARRAY] from page 262. *)
   let generate_predictions match_set =
-    Log.debug (fun m -> m "generate_predictions: #match_set=%d" (Classifier_set.cardinal match_set));
+    Log.debug (fun m -> m "generate_predictions: #match_set=%d" (Identifier_dict.length match_set));
     let raw_predictions =
-      let process_classifier Classifier.{ action; prediction; fitness; _ } map =
+      let process_classifier ~key:_ ~data:Classifier.{ action; prediction; fitness; _ } map =
         Action_map.update map ~key:action ~f:(function
           | None -> Some (prediction *. fitness, fitness)
           | Some (acc_prediction, acc_fitness) -> Some (acc_prediction +. prediction *. fitness, acc_fitness +. fitness)
         )
       in
-      Classifier_set.fold match_set ~init:Action_map.empty ~f:process_classifier
+      Identifier_dict.fold match_set ~init:Action_map.empty ~f:process_classifier
     in
     let normalise_raw_prediction ~key:action ~data:(acc_prediction, acc_fitness) (num_predictions, predictions) =
       (* We don't want to divide by zero. Besides, when the accumulated
@@ -509,15 +498,15 @@ struct
 
   (* Routine [GENERATE ACTION SET] from page 263. *)
   let generate_action_set action match_set =
-    Log.debug (fun m -> m "generate_action_set: action=%s, #match_set=%d" (Action.to_string action) (Classifier_set.cardinal match_set));
-    Classifier_set.filter ~f:(fun cl -> Action.equal action Classifier.(cl.action)) match_set
+    Log.debug (fun m -> m "generate_action_set: action=%s, #match_set=%d" (Action.to_string action) (Identifier_dict.length match_set));
+    Identifier_dict.filter match_set ~f:(fun ~key:_ ~data:cl -> Action.equal action Classifier.(cl.action))
 
   (************************************************************************************************)
   (* [UPDATE SET].                                                                                *)
   (************************************************************************************************)
 
   let update_classifier_accuracy ~config ~payoff ~action_set_numerosity classifier =
-    Log.debug (fun m -> m "update_classifier_accuracy: classifier=%s" (Classifier.identifier classifier));
+    Log.debug (fun m -> m "update_classifier_accuracy: classifier=%a" Identifier.pp (Classifier.identifier classifier));
     let Config.{ learning_rate; accuracy_coefficient; accuracy_power; prediction_error_threshold; _ } = config in
     let Classifier.{ experience; prediction; prediction_error; avg_action_set_size; _ } = classifier in
     let experience = experience + 1 in
@@ -546,19 +535,24 @@ struct
     Classifier.update ~experience ~prediction ~prediction_error ~avg_action_set_size ~accuracy classifier
 
   let update_classifier_fitness ~config ~total_accuracy (Classifier.{ fitness; numerosity; accuracy; _ } as classifier) =
-    Log.debug (fun m -> m "update_classifier_fitness: classifier=%s" (Classifier.identifier classifier));
+    Log.debug (fun m -> m "update_classifier_fitness: classifier=%a" Identifier.pp (Classifier.identifier classifier));
     let Config.{ learning_rate; _ } = config in
     let relative_accuracy = accuracy *. float_of_int numerosity /. total_accuracy in
     let fitness = fitness +. learning_rate *. (relative_accuracy -. fitness) in
     Classifier.update ~fitness classifier
 
   let update_action_set ~config ~payoff action_set population =
-    Log.debug (fun m -> m "update_action_set: payoff=%6.1f, #action_set=%d" payoff (Classifier_set.cardinal action_set));
+    Log.debug (fun m -> m "update_action_set: payoff=%6.1f, #action_set=%d" payoff (Identifier_dict.length action_set));
     let Config.{ subsumption_threshold; prediction_error_threshold; do_action_set_subsumption; _ } = config in
-    let action_set_numerosity = float_of_int @@ Classifier_set.fold action_set ~init:0 ~f:(fun Classifier.{ numerosity; _} sum -> sum + numerosity) in
-    Classifier_set.iter action_set ~f:(update_classifier_accuracy ~config ~payoff ~action_set_numerosity);
-    let total_accuracy = Classifier_set.fold action_set ~init:0. ~f:(fun Classifier.{ accuracy; numerosity; _} sum -> sum +. accuracy *. float_of_int numerosity) in
-    Classifier_set.iter action_set ~f:(update_classifier_fitness ~config ~total_accuracy);
+    let action_set_numerosity =
+      Identifier_dict.fold action_set ~init:0 ~f:(fun ~key:_ ~data:Classifier.{ numerosity; _} sum -> sum + numerosity)
+      |> float_of_int
+    in
+    Identifier_dict.iter action_set ~f:(fun ~key:_ ~data:cl -> update_classifier_accuracy ~config ~payoff ~action_set_numerosity cl);
+    let total_accuracy =
+      Identifier_dict.fold action_set ~init:0. ~f:(fun ~key:_ ~data:Classifier.{ accuracy; numerosity; _} sum -> sum +. accuracy *. float_of_int numerosity)
+    in
+    Identifier_dict.iter action_set ~f:(fun ~key:_ ~data:cl -> update_classifier_fitness ~config ~total_accuracy cl);
     match do_action_set_subsumption with
     | true -> subsume_in_action_set ~subsumption_threshold ~prediction_error_threshold action_set population
     | false -> (action_set, population)
@@ -572,7 +566,7 @@ struct
     ref @@ Ready_for_environment {
       config;
       current_time = 0;
-      population = { set = Classifier_set.empty; numerosity = 0 };
+      population = { set = Identifier_dict.create Config.(config.max_population_size); numerosity = 0 };
       previous = None;
     }
 
@@ -599,7 +593,7 @@ struct
     | Ready_for_environment { config; current_time; population; previous } ->
         Log.debug (fun m ->
           m "provide_environment: current_time=%d, #population=%d, numerosity=%d"
-          current_time (Classifier_set.cardinal population.set) population.numerosity
+          current_time (Identifier_dict.length population.set) population.numerosity
         );
         let (population, match_set) = generate_match_set ~config ~current_time population environment in
         let (num_predictions, predictions) = generate_predictions match_set in
@@ -630,7 +624,7 @@ struct
     | Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous } ->
         Log.debug (fun m ->
           m "provide_feedback: current_time=%d, #population=%d, numerosity=%d"
-          current_time (Classifier_set.cardinal population.set) population.numerosity
+          current_time (Identifier_dict.length population.set) population.numerosity
         );
         let Config.{ discount_factor; _ } = config in
         let population =

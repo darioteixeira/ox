@@ -2,12 +2,11 @@ include Classifier_intf
 
 module Make (Condition : Condition.S) (Action : Action.S) : S with type condition = Condition.t and type action = Action.t = struct
 
-  type identifier = string [@@deriving yojson]
   type condition = Condition.t [@@deriving yojson]
   type action = Action.t [@@deriving yojson]
 
   type t = {
-    identifier : identifier;
+    identifier : Identifier.t;
     condition : condition;
     action : action;
     mutable prediction : float;
@@ -21,23 +20,25 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
   } [@@deriving yojson]
 
   let make_identifier ~condition ~action =
-    Printf.sprintf "%s-%s" (Condition.to_string condition) (Action.to_string action)
+    Identifier.of_string @@ Printf.sprintf "%s-%s" (Condition.to_string condition) (Action.to_string action)
 
   let make
     ~condition ~action ~prediction ~prediction_error ~fitness ~last_occurrence
-    ~experience ~avg_action_set_size ~numerosity ~accuracy = {
-      identifier = make_identifier ~condition ~action;
-      condition;
-      action;
-      prediction;
-      prediction_error;
-      fitness;
-      last_occurrence;
-      experience;
-      avg_action_set_size;
-      numerosity;
-      accuracy;
-    }
+    ~experience ~avg_action_set_size ~numerosity ~accuracy =
+      let identifier = make_identifier ~condition ~action in
+      {
+        identifier;
+        condition;
+        action;
+        prediction;
+        prediction_error;
+        fitness;
+        last_occurrence;
+        experience;
+        avg_action_set_size;
+        numerosity;
+        accuracy;
+      }
 
   let update
     ?prediction ?prediction_error ?fitness ?last_occurrence
@@ -73,11 +74,8 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
         accuracy = Option.value ~default:classifier.accuracy accuracy;
       }
 
-  let compare { identifier = id1; _ } { identifier = id2; _ } =
-    String.compare id1 id2
-
-  let equal cl1 cl2 =
-    compare cl1 cl2 = 0
+  let equal { identifier = id1; _ } { identifier = id2; _ } =
+    Identifier.equal id1 id2
 
   let identifier { identifier; _ } =
     identifier

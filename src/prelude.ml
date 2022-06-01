@@ -1,4 +1,4 @@
-module ArrayLabels = struct
+module Array = struct
   include ArrayLabels
 
   let fold_left_map2 ~f ~init array1 array2 =
@@ -42,6 +42,8 @@ module ArrayLabels = struct
         (loop acc 1, dest)
 end
 
+module List = ListLabels
+
 module Result = struct
   include Result
 
@@ -55,7 +57,59 @@ module Result = struct
           | (Error _) as err -> err
     in
     loop [] l
+
+  module Syntax = struct
+    let (let*) = bind
+
+    let (let+) x f = map f x
+  end
 end
+
+module Hashtbl = struct
+  module type HashedType = sig
+    include MoreLabels.Hashtbl.HashedType
+
+    val to_yojson : t -> Yojson.Safe.t
+    val of_yojson : Yojson.Safe.t -> (t, string) result
+  end
+
+  module type S = sig
+    include MoreLabels.Hashtbl.S
+
+    val filter : f:(key:key -> data:'a -> bool) -> 'a t -> 'a t
+    val to_yojson : ('a -> Yojson.Safe.t) -> 'a t -> Yojson.Safe.t
+    val of_yojson : (Yojson.Safe.t -> ('a, string) result) -> Yojson.Safe.t -> ('a t, string) result
+  end
+
+  module Make (H : HashedType) : S with type key = H.t = struct
+    include MoreLabels.Hashtbl.Make (H)
+
+    type 'value key_value = { key : H.t; value : 'value } [@@deriving yojson]
+
+    let filter ~f tbl =
+      let tbl' = create @@ length tbl in
+      iter tbl ~f:(fun ~key ~data ->
+        match f ~key ~data with
+        | true -> add tbl' ~key ~data
+        | false -> ()
+      );
+      tbl'
+
+    let to_yojson value_to_yojson tbl =
+      tbl
+      |> to_seq
+      |> Seq.map (fun (key, value) -> { key; value })
+      |> List.of_seq
+      |> [%derive.to_yojson: 'a key_value list] value_to_yojson
+
+    let of_yojson value_of_yojson yojson =
+      yojson
+      |> [%derive.of_yojson: 'a key_value list] value_of_yojson
+      |> Result.map (fun l -> l |> List.to_seq |> Seq.map (fun { key; value } -> (key, value)) |> of_seq)
+  end
+end
+
+module Map = MoreLabels.Map
 
 module Set = struct
   module type OrderedType = MoreLabels.Set.OrderedType

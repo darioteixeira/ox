@@ -1,7 +1,5 @@
 open Prelude
 
-module Array = ArrayLabels
-
 include Condition_intf
 
 module Locus = struct

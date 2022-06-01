@@ -1,10 +1,9 @@
 module type S = sig
-  type identifier
   type condition
   type action
 
   type t = private {
-    identifier : identifier;
+    identifier : Identifier.t;
     (** This identifier is computed from the [condition] and [action]. *)
     condition : condition;
     (** Environmental state(s) which the classifier matches. *)
@@ -70,17 +69,10 @@ module type S = sig
     t
   (** Returns a fresh classifier using the provided classifier as template. *)
 
-  val compare : t -> t -> int
-
   val equal : t -> t -> bool
-
-  val identifier : t -> string
-
+  val identifier : t -> Identifier.t
   val fitness : t -> float
-
   val numerosity : t -> int
-
   val to_yojson : t -> Yojson.Safe.t
-
   val of_yojson : Yojson.Safe.t -> (t, string) result
 end
