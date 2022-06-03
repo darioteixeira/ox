@@ -120,11 +120,10 @@ struct
 
   let select_via_roulette_wheel ~quantity ~get_weight set =
     Log.debug (fun m -> m "select_via_roulette_wheel: quantity=%d, #set=%d" quantity (Identifier_dict.length set));
-    let weights = Identifier_dict.(create @@ length set) in
     let sum =
-      Identifier_dict.fold set ~init:0. ~f:(fun ~key ~data:cl sum ->
+      Identifier_dict.fold set ~init:0. ~f:(fun ~key:_ ~data:cl sum ->
         let weight = get_weight cl in
-        Identifier_dict.add weights ~key ~data:weight;
+        Classifier.set_weight cl weight;
         sum +. weight
     )
     in
@@ -133,19 +132,17 @@ struct
           acc_cl
       | n ->
           let target = Random.float sum in
-          let seq = Identifier_dict.to_seq weights in
+          let seq = Identifier_dict.to_seq set in
           let rec loop_until_target acc seq =
             match seq () with
             | Seq.Nil ->
                 acc_cl
-            | Seq.Cons ((id, weight), seq) ->
+            | Seq.Cons ((_, cl), seq) ->
+                let weight = Classifier.(cl.weight) in
                 let acc = acc +. weight in
                 match acc > target with
-                | true ->
-                    let cl = Identifier_dict.find set id in
-                    pick_classifiers (cl :: acc_cl) (sum -. weight) (n - 1)
-                | false ->
-                    loop_until_target acc seq
+                | true -> pick_classifiers (cl :: acc_cl) (sum -. weight) (n - 1)
+                | false -> loop_until_target acc seq
           in
           loop_until_target 0. seq
     in
