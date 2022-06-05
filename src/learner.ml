@@ -94,6 +94,11 @@ struct
 
   type t = ready_for ref [@@deriving yojson]
 
+  type stats = {
+    population_size : int;
+    population_numerosity : int;
+  }
+
   exception Expected_environment
 
   exception Expected_feedback
@@ -566,6 +571,16 @@ struct
       population = { set = Identifier_dict.create Config.(config.max_population_size); numerosity = 0 };
       previous = None;
     }
+
+  let get_stats learner =
+    let stats_of_population { set; numerosity } = {
+      population_size = Identifier_dict.length set;
+      population_numerosity = numerosity;
+    }
+    in
+    match !learner with
+    | Ready_for_feedback { population; _ } -> stats_of_population population
+    | Ready_for_environment { population; _ } -> stats_of_population population
 
   let get_config learner =
     Log.debug (fun m -> m "get_config");

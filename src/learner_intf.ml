@@ -10,12 +10,19 @@ module type S = sig
   type t
   (** An XCS learner. *)
 
+  type stats = {
+    population_size : int;
+    population_numerosity : int;
+  }
+
   val logs_src : Logs.src
   (** You can use this to control the logging behaviour of the learner.
       (Please consult the documentation of the library for details.) *)
 
   val create : config:Config.t -> t
   (** Create a new learner using the given {!Config.t}. *)
+
+  val get_stats : t -> stats
 
   val get_config : t -> Config.t
   (** Returns the current configuration of the given learner. *)
