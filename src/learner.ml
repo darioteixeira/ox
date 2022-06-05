@@ -206,11 +206,11 @@ struct
               { set; numerosity = numerosity - 1 }
         in
         let population = List.fold_left victims ~init:population ~f:remove_classifier in
-        let avg_population_fitness' =
-          let sum = Identifier_dict.fold population.set ~init:0. ~f:(fun ~key:_ ~data:Classifier.{ fitness; _} sum -> sum +. fitness) in
-          sum /. float_of_int population.numerosity
-        in
         Log.debug (fun m ->
+          let avg_population_fitness' =
+            let sum = Identifier_dict.fold population.set ~init:0. ~f:(fun ~key:_ ~data:Classifier.{ fitness; _} sum -> sum +. fitness) in
+            sum /. float_of_int population.numerosity
+          in
           m "cull_population: avg_population_fitness: before=%7.5f, after=%7.5f (%s)"
           avg_population_fitness avg_population_fitness'
           (match Float.compare avg_population_fitness avg_population_fitness' with -1 -> "UP" | 1 -> "DOWN" | _ -> "EQUAL")
@@ -261,7 +261,7 @@ struct
         Identifier_dict.fold action_set ~init:(action_set, population) ~f:(fun ~key:identifier ~data:cl (action_set, population) ->
           match Condition.is_more_general ~than:Classifier.(cl.condition) Classifier.(best.condition) with
           | true ->
-              Classifier.(update ~numerosity:Classifier.(best.numerosity + cl.numerosity) best);
+              Classifier.(update ~numerosity:(best.numerosity + cl.numerosity) best);
               Identifier_dict.remove action_set identifier;
               Identifier_dict.remove population.set identifier;
               (action_set, population)
