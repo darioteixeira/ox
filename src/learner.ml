@@ -212,8 +212,8 @@ struct
             sum /. float_of_int population.numerosity
           in
           m "cull_population: avg_population_fitness: before=%7.5f, after=%7.5f (%s)"
-          avg_population_fitness avg_population_fitness'
-          (match Float.compare avg_population_fitness avg_population_fitness' with -1 -> "UP" | 1 -> "DOWN" | _ -> "EQUAL")
+            avg_population_fitness avg_population_fitness'
+            (match Float.compare avg_population_fitness avg_population_fitness' with -1 -> "UP" | 1 -> "DOWN" | _ -> "EQUAL")
         );
         population
 
