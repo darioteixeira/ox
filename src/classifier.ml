@@ -21,7 +21,7 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
   } [@@deriving yojson]
 
   let make_identifier ~condition ~action =
-    Identifier.of_string @@ Printf.sprintf "%s-%s" (Condition.to_string condition) (Action.to_string action)
+    Identifier.of_string @@ Printf.sprintf "%s:%s" (Condition.to_string condition) (Action.to_string action)
 
   let make
     ~condition ~action ~prediction ~prediction_error ~fitness ~last_occurrence
