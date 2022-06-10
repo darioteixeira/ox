@@ -266,16 +266,16 @@ struct
     | None ->
         (action_set, population)
     | Some best ->
-        Identifier_dict.fold action_set ~init:(action_set, population) ~f:(fun ~key:identifier ~data:cl (action_set, population) ->
+        Identifier_dict.filter_map_inplace action_set ~f:(fun ~key:identifier ~data:cl ->
           match Condition.is_more_general ~than:Classifier.(cl.condition) Classifier.(best.condition) with
           | true ->
               Classifier.(update ~numerosity:(best.numerosity + cl.numerosity) best);
-              Identifier_dict.remove action_set identifier;
               Identifier_dict.remove population.set identifier;
-              (action_set, population)
+              None
           | false ->
-              (action_set, population)
-        )
+              Some cl
+        );
+        (action_set, population)
 
   let insert_or_subsume ~subsumption_threshold ~prediction_error_threshold ~child ~parent1 ~parent2 population =
     Log.debug (fun m ->
