@@ -25,7 +25,7 @@ module type S = sig
     (** Parameter [n]: Number of micro-classifiers this classifier represents. *)
     mutable accuracy : float;
     (** Parameter [k]: Accuracy of the classifier. Note that this is a cached computed quantity based on the prediction error [ε]. *)
-    mutable weight : float;
+    mutable weight : int;
     (** Several routines attach a routine-specific weight to a classifier.
         Storing this weight as a classifier field saves us from constantly
         allocating ancillary data structures.
@@ -77,5 +77,5 @@ module type S = sig
   val equal : t -> t -> bool
   val identifier : t -> Identifier.t
   val fitness : t -> float
-  val set_weight : t -> float -> unit
+  val set_weight : t -> int -> unit
 end
