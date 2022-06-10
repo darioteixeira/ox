@@ -137,7 +137,7 @@ struct
       | 0, _ | _, 0 ->
           acc_cl
       | sum, quantity ->
-          let target = Random.int sum in
+          let target = Random.full_int sum in
           let seq = Identifier_dict.to_seq set in
           let rec loop_until_target acc seq =
             match seq () with
