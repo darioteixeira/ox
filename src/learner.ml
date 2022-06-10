@@ -132,7 +132,6 @@ struct
         sum + weight
     )
     in
-    assert (sum >= 0);
     let rec pick_classifiers acc_cl sum quantity =
       match sum, quantity with
       | 0, _ | _, 0 ->
