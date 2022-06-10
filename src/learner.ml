@@ -120,7 +120,7 @@ struct
   let num_actions = Action_set.cardinal all_actions
 
   (************************************************************************************************)
-  (* Parent selection methods.                                                                    *)
+  (* Generic roulette-wheel selection.                                                            *)
   (************************************************************************************************)
 
   let select_via_roulette_wheel ~quantity ~get_weight set =
