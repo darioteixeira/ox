@@ -206,9 +206,11 @@ struct
         let victims = select_via_roulette_wheel ~quantity:excess ~get_weight:culling_vote set in
         let remove_classifier { set; numerosity } = function
           | Classifier.{ identifier; numerosity = 1; _ } ->
+              Log.debug (fun m -> m "cull_population: removing classifier=%a" Identifier.pp identifier);
               Identifier_dict.remove set identifier;
               { set; numerosity = numerosity - 1 }
-          | Classifier.{ numerosity = n; _ } as victim ->
+          | Classifier.{ identifier; numerosity = n; _ } as victim ->
+              Log.debug (fun m -> m "cull_population: updating classifier=%a" Identifier.pp identifier);
               Classifier.update ~numerosity:(n - 1) victim;
               { set; numerosity = numerosity - 1 }
         in
