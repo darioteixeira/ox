@@ -245,6 +245,7 @@ struct
   (* Routine [DO ACTION SET SUBSUMPTION] from page 269. *)
   let subsume_in_action_set ~subsumption_threshold ~prediction_error_threshold action_set population =
     Log.debug (fun m -> m "subsume_in_action_set");
+    let action_set = Identifier_dict.filter action_set ~f:(fun ~key ~data:_ -> Identifier_dict.mem population.set key) in
     let best =
       Identifier_dict.fold action_set ~init:None ~f:(fun ~key:_ ~data:candidate best ->
         let Classifier.{ condition = c_condition; _ } = candidate in
@@ -324,12 +325,19 @@ struct
       in
       Identifier_dict.fold action_set ~init:(0, 0) ~f:for_each_classifier
     in
-    let avg_age = float_of_int sum_age /. float_of_int sum_numerosity in
-    match avg_age <= age_threshold with
-    | true ->
+    let avg_age =
+      match sum_numerosity with
+      | 0 -> None
+      | sum_numerosity -> Some (float_of_int sum_age /. float_of_int sum_numerosity)
+    in
+    match avg_age with
+    | None ->
+        Log.debug (fun m -> m "run_genetic_algorithm: action set is empty");
+        population
+    | Some avg_age when avg_age <= age_threshold ->
         Log.debug (fun m -> m "run_genetic_algorithm: avg_age=%2.1f, which is lower than age_threshold=%2.1f" avg_age age_threshold);
         population
-    | false ->
+    | Some _ ->
         Identifier_dict.iter action_set ~f:(fun ~key:_ ~data:cl -> Classifier.update ~last_occurrence:current_time cl);
         let (parent1, parent2) =
           let get_weight Classifier.{ fitness; _ } =
