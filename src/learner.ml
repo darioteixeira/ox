@@ -316,14 +316,13 @@ struct
       offspring_fitness_multiplier; subsumption_threshold; do_offspring_subsumption; _
     } = config
     in
-    let (sum_age, sum_numerosity, prediction_error) =
-      let for_each_classifier ~key:_ ~data:Classifier.{ prediction_error; last_occurrence; numerosity; _ } (sum_age, sum_numerosity, sum_prediction_error) =
+    let (sum_age, sum_numerosity) =
+      let for_each_classifier ~key:_ ~data:Classifier.{ last_occurrence; numerosity; _ } (sum_age, sum_numerosity) =
         let sum_age = sum_age + numerosity * (current_time - last_occurrence) in
         let sum_numerosity = sum_numerosity + numerosity in
-        let sum_prediction_error = sum_prediction_error +. prediction_error in
-        (sum_age, sum_numerosity, sum_prediction_error)
+        (sum_age, sum_numerosity)
       in
-      Identifier_dict.fold action_set ~init:(0, 0, 0.) ~f:for_each_classifier
+      Identifier_dict.fold action_set ~init:(0, 0) ~f:for_each_classifier
     in
     let avg_age = float_of_int sum_age /. float_of_int sum_numerosity in
     match avg_age <= age_threshold with
@@ -341,8 +340,8 @@ struct
           | [ parent1; parent2 ] -> (parent1, parent2)
           | _ -> assert false
         in
-        let Classifier.{ condition = c1; action = a1; fitness = f1; _ } = parent1 in
-        let Classifier.{ condition = c2; action = a2; fitness = f2; _ } = parent2 in
+        let Classifier.{ condition = c1; action = a1; prediction_error = e1; fitness = f1; _ } = parent1 in
+        let Classifier.{ condition = c2; action = a2; prediction_error = e2; fitness = f2; _ } = parent2 in
         let maybe_mutate_action action =
           if Random.float 1. < mutation_probability
           then Action_set.random_exn all_actions
@@ -362,6 +361,7 @@ struct
                 Condition.crossover_with_mutation ~mutation_probability ~wildcard_probability ~environment c1 c2
               in
               let fitness = offspring_fitness_multiplier *. (f1 +. f2) /. 2. in
+              let prediction_error = (e1 +. e2) /. 2. in
               let child1 =
                 Classifier.clone
                   ~condition:condition1 ~action:action1 ~prediction ~prediction_error
@@ -383,12 +383,12 @@ struct
               let condition2 = Condition.clone_with_mutation ~mutation_probability ~wildcard_probability ~environment c2 in
               let child1 =
                 Classifier.clone
-                  ~condition:condition1 ~action:action1 ~prediction ~prediction_error
+                  ~condition:condition1 ~action:action1 ~prediction
                   ~fitness:(offspring_fitness_multiplier *. f1) ~experience:0 ~numerosity:1 parent1
               in
               let child2 =
                 Classifier.clone
-                  ~condition:condition2 ~action:action2 ~prediction ~prediction_error
+                  ~condition:condition2 ~action:action2 ~prediction
                   ~fitness:(offspring_fitness_multiplier *. f2) ~experience:0 ~numerosity:1 parent2
               in
               (child1, child2)
