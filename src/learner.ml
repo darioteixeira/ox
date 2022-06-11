@@ -437,35 +437,35 @@ struct
       ~numerosity:1
       ~accuracy:1.
 
-  (* Routine [GENERATE MATCH SET] from page 260. *)
+  (* Routine [GENERATE MATCH SET] from page 260.
+     Unlike in the paper, for performance reasons we don't cull the population,
+     neither do we start over after generating each covering classifier. *)
   let generate_match_set ~config ~current_time population environment =
     Log.debug (fun m -> m "generate_match_set");
     let Config.{ min_actions; _ } = config in
     let effective_min_actions = Option.value ~default:num_actions min_actions in
-    let rec loop population =
-      let match_set = Identifier_dict.create 32 in
-      let used_actions =
-        let process_classifier ~key ~data used_actions =
-          let Classifier.{ condition; action; _ } = data in
-          if Condition.matches condition environment
-          then (Identifier_dict.add match_set ~key ~data; Action_set.add action used_actions)
-          else used_actions
-        in
-        Identifier_dict.fold population.set ~init:Action_set.empty ~f:process_classifier
+    let match_set = Identifier_dict.create 32 in
+    let used_actions =
+      let process_classifier ~key ~data used_actions =
+        let Classifier.{ condition; action; _ } = data in
+        if Condition.matches condition environment
+        then (Identifier_dict.add match_set ~key ~data; Action_set.add action used_actions)
+        else used_actions
       in
+      Identifier_dict.fold population.set ~init:Action_set.empty ~f:process_classifier
+    in
+    let rec loop_until_enough_actions population used_actions =
       match Action_set.cardinal used_actions >= effective_min_actions with
       | true ->
           (population, match_set)
       | false ->
-          let new_cl = generate_covering_classifier ~config ~current_time used_actions environment in
-          let population =
-            population
-            |> insert_into_population new_cl
-            |> cull_population ~config
-          in
-          loop population
+          let Classifier.{ identifier; action; _ } as cl = generate_covering_classifier ~config ~current_time used_actions environment in
+          Identifier_dict.add match_set ~key:identifier ~data:cl;
+          let population = insert_into_population cl population in
+          let used_actions = Action_set.add action used_actions in
+          loop_until_enough_actions population used_actions
     in
-    loop population
+    loop_until_enough_actions population used_actions
 
   (************************************************************************************************)
   (* [GENERATE PREDICTION ARRAY].                                                                 *)
