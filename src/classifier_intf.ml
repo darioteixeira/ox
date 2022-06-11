@@ -30,7 +30,7 @@ module type S = sig
         Storing this weight as a classifier field saves us from constantly
         allocating ancillary data structures.
     *)
-  } [@@deriving yojson]
+  } [@@deriving show, yojson]
 
   val make :
     condition:condition ->

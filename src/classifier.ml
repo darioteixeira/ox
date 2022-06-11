@@ -5,6 +5,12 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
   type condition = Condition.t [@@deriving yojson]
   type action = Action.t [@@deriving yojson]
 
+  let pp_condition fmt v =
+    Format.pp_print_string fmt (Condition.to_string v)
+
+  let pp_action fmt v =
+    Format.pp_print_string fmt (Action.to_string v)
+
   type t = {
     identifier : Identifier.t;
     condition : condition;
@@ -18,7 +24,7 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
     mutable numerosity : int;
     mutable accuracy : float;
     mutable weight : int;
-  } [@@deriving yojson]
+  } [@@deriving show, yojson]
 
   let make_identifier ~condition ~action =
     Identifier.of_string @@ Printf.sprintf "%s:%s" (Condition.to_string condition) (Action.to_string action)
