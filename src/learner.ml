@@ -310,7 +310,6 @@ struct
   (* Routine [RUN GA] from page 265. *)
   let run_genetic_algorithm ~config ~current_time ~prediction action_set population environment =
     Log.debug (fun m -> m "run_genetic_algorithm: #action_set=%d" (Identifier_dict.length action_set));
-    assert (Identifier_dict.length action_set <> 0);
     let Config.{
       prediction_error_threshold; age_threshold;
       crossover_probability; wildcard_probability; mutation_probability;
