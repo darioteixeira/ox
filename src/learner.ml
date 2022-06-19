@@ -343,6 +343,7 @@ struct
             int_of_float (1000. *. fitness)
           in
           match select_via_roulette_wheel ~quantity:2 ~get_weight action_set with
+          | [] -> (snd @@ Identifier_dict.random_exn action_set, snd @@ Identifier_dict.random_exn action_set)
           | [ parent1 ] -> (parent1, parent1)
           | [ parent1; parent2 ] -> (parent1, parent2)
           | _ -> assert false

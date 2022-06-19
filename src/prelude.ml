@@ -77,6 +77,8 @@ module Hashtbl = struct
     include MoreLabels.Hashtbl.S
 
     val filter : f:(key:key -> data:'a -> bool) -> 'a t -> 'a t
+    val random_opt : 'a t -> (key * 'a) option
+    val random_exn : 'a t -> key * 'a
     val to_yojson : ('a -> Yojson.Safe.t) -> 'a t -> Yojson.Safe.t
     val of_yojson : (Yojson.Safe.t -> ('a, string) result) -> Yojson.Safe.t -> ('a t, string) result
   end
@@ -94,6 +96,25 @@ module Hashtbl = struct
         | false -> ()
       );
       tbl'
+
+    let random_opt tbl =
+      match length tbl with
+      | 0 ->
+          None
+      | n ->
+          let chosen = Random.int n in
+          let rec loop_until counter seq =
+            match counter, seq () with
+            | _, Seq.Nil -> None
+            | 0, Seq.Cons (elt, _) -> Some elt
+            | _, Seq.Cons (_, seq) -> loop_until (counter - 1) seq
+          in
+          loop_until chosen (to_seq tbl)
+
+    let random_exn tbl =
+      match random_opt tbl with
+      | Some elt -> elt
+      | None -> raise Not_found
 
     let to_yojson value_to_yojson tbl =
       tbl
