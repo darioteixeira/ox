@@ -2,11 +2,11 @@ open Prelude
 
 include Learner_intf
 
-module Make (Sensors_def : Sensors.DEF) (Action : Action.S) : S with type sensors = Sensors_def.sensors and type action = Action.t =
+module Make (Sensors_def : Sensors.DEF) (Action : Action.S) (Maketbl : Dict.MAKETBL) : S with type sensors = Sensors_def.sensors and type action = Action.t =
 struct
   module Condition = Condition.Make (Sensors_def)
   module Classifier = Classifier.Make (Condition) (Action)
-  module Identifier_dict = Hashtbl.Make (Identifier)
+  module Identifier_dict = Dict.Make (Maketbl (Identifier))
   module Action_map = Map.Make (Action)
   module Action_set = Set.Make (Action)
 

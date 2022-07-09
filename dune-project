@@ -17,6 +17,7 @@
     (dune :build)
     (fmt (>= 0.9.0))
     (logs (>= 0.7.0))
+    (ocaml (>= 4.14.0))
     (ppx_deriving_yojson (>= 3.6.1))
     (result (>= 1.5))
     (yojson (>= 1.7.0))
