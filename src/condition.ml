@@ -36,7 +36,7 @@ module Make (Sensors_def : Sensors.DEF) : S with type sensors = Sensors_def.sens
             let (module Sensor) = hd_sensor in
             let (hd_genericity, hd_group) =
               Array.fold_left_map hd_environment ~init:0 ~f:(fun acc env ->
-                if Random.float 1.0 < wildcard_probability
+                if Random.float 1. < wildcard_probability
                 then (acc + 1, Locus.Wildcard)
                 else (acc, Locus.Specific env)
               )
@@ -99,14 +99,14 @@ module Make (Sensors_def : Sensors.DEF) : S with type sensors = Sensors_def.sens
 
   let mutate (type sensors) ~mutation_probability ~wildcard_probability (module Sensor : Sensors.SENSOR with type t = sensors) acc locus maybe_env =
     let locus' =
-      match Random.float 1.0 < mutation_probability with
+      match Random.float 1. < mutation_probability with
       | false ->
           locus
       | true ->
           match locus, maybe_env with
           | Locus.Wildcard, None -> Locus.Specific (Sensor.random ())
           | Locus.Wildcard, Some env -> Locus.Specific env
-          | Locus.Specific _, _ when Random.float 1.0 < wildcard_probability -> Locus.Wildcard
+          | Locus.Specific _, _ when Random.float 1. < wildcard_probability -> Locus.Wildcard
           | Locus.Specific v, None -> Locus.Specific (Sensor.random ~exclude:v ())
           | Locus.Specific _, Some env -> Locus.Specific env
     in
