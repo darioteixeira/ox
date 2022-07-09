@@ -446,7 +446,12 @@ struct
         then (Identifier_dict.add match_set ~key ~data; Action_set.add action used_actions)
         else used_actions
       in
-      Identifier_dict.fold population.set ~init:Action_set.empty ~f:process_classifier
+      Identifier_dict.parallel_fold
+        ~init:Action_set.empty
+        ~neutral:Action_set.empty
+        ~f:process_classifier
+        ~combine:Action_set.union
+        population.set
     in
     let rec loop_until_enough_actions population used_actions =
       match Action_set.cardinal used_actions >= effective_min_actions with
