@@ -126,18 +126,18 @@ struct
   let select_via_roulette_wheel ~quantity ~get_weight set =
     Log.debug (fun m -> m "select_via_roulette_wheel: quantity=%d, #set=%d" quantity (Identifier_dict.length set));
     let sum =
-      Identifier_dict.fold set ~init:0 ~f:(fun ~key:_ ~data:cl sum ->
+      Identifier_dict.fold set ~init:0. ~f:(fun ~key:_ ~data:cl sum ->
         let weight = get_weight cl in
         Classifier.set_weight cl weight;
-        sum + weight
+        sum +. weight
     )
     in
     let rec pick_classifiers acc_cl sum quantity =
       match sum, quantity with
-      | 0, _ | _, 0 ->
+      | 0., _ | _, 0 ->
           acc_cl
       | sum, quantity ->
-          let target = Random.full_int sum in
+          let target = Random.float sum in
           let seq = Identifier_dict.to_seq set in
           let rec loop_until_target acc seq =
             match seq () with
@@ -145,15 +145,15 @@ struct
                 acc_cl
             | Seq.Cons ((_, cl), seq) ->
                 let weight = Classifier.(cl.weight) in
-                let acc = acc + weight in
+                let acc = acc +. weight in
                 match acc > target with
                 | true ->
-                    Classifier.set_weight cl 0;
-                    pick_classifiers (cl :: acc_cl) (sum - weight) (quantity - 1)
+                    Classifier.set_weight cl 0.;
+                    pick_classifiers (cl :: acc_cl) (sum -. weight) (quantity - 1)
                 | false ->
                     loop_until_target acc seq
           in
-          loop_until_target 0 seq
+          loop_until_target 0. seq
     in
     pick_classifiers [] sum quantity
 
@@ -196,12 +196,9 @@ struct
           let numerosity = float_of_int numerosity in
           let scaled_fitness = fitness /. numerosity in
           let vote = avg_action_set_size *. numerosity in
-          let adjusted_vote =
-            if experience > deletion_threshold && scaled_fitness < fitness_threshold *.avg_population_fitness
-            then vote *. avg_population_fitness /. scaled_fitness
-            else vote
-          in
-          int_of_float (1000. *. adjusted_vote)
+          if experience > deletion_threshold && scaled_fitness < fitness_threshold *.avg_population_fitness
+          then vote *. avg_population_fitness /. scaled_fitness
+          else vote
         in
         let victims = select_via_roulette_wheel ~quantity:excess ~get_weight:culling_vote set in
         let remove_classifier { set; numerosity } = function
@@ -339,10 +336,7 @@ struct
     | Some _ ->
         Identifier_dict.iter action_set ~f:(fun ~key:_ ~data:cl -> Classifier.update ~last_occurrence:current_time cl);
         let (parent1, parent2) =
-          let get_weight Classifier.{ fitness; _ } =
-            int_of_float (1000. *. fitness)
-          in
-          match select_via_roulette_wheel ~quantity:2 ~get_weight action_set with
+          match select_via_roulette_wheel ~quantity:2 ~get_weight:Classifier.fitness action_set with
           | [] -> (snd @@ Identifier_dict.random_exn action_set, snd @@ Identifier_dict.random_exn action_set)
           | [ parent1 ] -> (parent1, parent1)
           | [ parent1; parent2 ] -> (parent1, parent2)

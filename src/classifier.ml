@@ -23,7 +23,7 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
     mutable avg_action_set_size : float;
     mutable numerosity : int;
     mutable accuracy : float;
-    mutable weight : int;
+    mutable weight : float;
   } [@@deriving show, yojson]
 
   let make_identifier ~condition ~action =
@@ -45,7 +45,7 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
         avg_action_set_size;
         numerosity;
         accuracy;
-        weight = 0;
+        weight = 0.;
       }
 
   let update
@@ -80,7 +80,7 @@ module Make (Condition : Condition.S) (Action : Action.S) : S with type conditio
         avg_action_set_size = Option.value ~default:classifier.avg_action_set_size avg_action_set_size;
         numerosity = Option.value ~default:classifier.numerosity numerosity;
         accuracy = Option.value ~default:classifier.accuracy accuracy;
-        weight = 0;
+        weight = 0.;
       }
 
   let equal { identifier = id1; _ } { identifier = id2; _ } =
