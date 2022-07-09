@@ -1,0 +1,8 @@
+(env (dev (flags (:standard -w -unused-functor-parameter))))
+
+(library
+  (name ox_multicore)
+  (public_name ox_multicore)
+  (libraries domainslib ox result yojson)
+  (preprocess (pps ppx_deriving_yojson))
+)
