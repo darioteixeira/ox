@@ -253,7 +253,7 @@ struct
           when Condition.(genericity c_condition > genericity condition) ->
             Some candidate
         | true, Some Classifier.{ condition; _ }
-          when Condition.(genericity c_condition = genericity condition) && Random.float 1. < 0.5 ->
+          when Condition.(genericity c_condition = genericity condition) && Random.bool () ->
             Some candidate
         | true, Some _ ->
             best
