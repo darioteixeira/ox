@@ -1,3 +1,5 @@
+(env (dev (flags (:standard -w -unused-functor-parameter))))
+
 (library
   (name ox)
   (public_name ox)

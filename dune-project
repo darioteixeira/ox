@@ -1,4 +1,4 @@
-(lang dune 2.9)
+(lang dune 3.3)
 (name ox)
 (version 1.0~alpha1)
 (maintainers "Dario Teixeira <dario.teixeira@nleyten.com>")
