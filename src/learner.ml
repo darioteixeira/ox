@@ -436,8 +436,7 @@ struct
      neither do we start over after generating each covering classifier. *)
   let generate_match_set ~config ~current_time population environment =
     Log.debug (fun m -> m "generate_match_set");
-    let Config.{ min_actions; _ } = config in
-    let effective_min_actions = Option.value ~default:num_actions min_actions in
+    let effective_min_actions = Option.value ~default:num_actions Config.(config.min_actions) in
     let match_set = Identifier_dict.create 32 in
     let used_actions =
       let process_classifier ~key ~data used_actions =
