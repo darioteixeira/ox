@@ -81,6 +81,8 @@ type t = {
   do_action_set_subsumption : bool;
   (** Parameter [doActionSetSubsumption]: Boolean that specifies whether
       action sets are to be tested for subsuming classifiers. *)
+  do_ga_only_when_exploring : bool;
+  (** Should we run the genetic algorithm only in steps where we did exploration? *)
   classifier_initialization : classifier_initialization;
   (** Initial parameters for new classifiers. *)
 } [@@deriving yojson]

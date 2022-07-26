@@ -59,6 +59,7 @@ struct
     previous_environment: environment;
     previous_action_set : Classifier.t Identifier_dict.t;
     previous_reward : float;
+    previous_do_exploration : bool;
   } [@@deriving yojson]
 
   type ready_for_environment = {
@@ -83,6 +84,7 @@ struct
     population : population;
     environment: environment;
     action_set : Classifier.t Identifier_dict.t;
+    do_exploration : bool;
     best_action_with_prediction : best_action_with_prediction;
     previous : previous option;
   } [@@deriving yojson]
@@ -400,12 +402,10 @@ struct
             population
             |> insert_or_subsume ~subsumption_threshold ~prediction_error_threshold ~child:child1 ~parent1 ~parent2
             |> insert_or_subsume ~subsumption_threshold ~prediction_error_threshold ~child:child2 ~parent1 ~parent2
-            |> cull_population ~config
         | false ->
             population
             |> insert_into_population child1
             |> insert_into_population child2
-            |> cull_population ~config
 
   (************************************************************************************************)
   (* [GENERATE MATCH SET].                                                                        *)
@@ -629,8 +629,9 @@ struct
         let (population, match_set) = generate_match_set ~config ~current_time population environment in
         let (num_predictions, predictions) = generate_predictions match_set in
         let best_action_with_prediction = lazy (select_best_action predictions) in
+        let do_exploration = Random.float 1. < Config.(config.exploration_probability) in
         let (action, _prediction) =
-          match Random.float 1. < Config.(config.exploration_probability) with
+          match do_exploration with
           | true -> select_random_action ~num_predictions predictions
           | false -> Lazy.force best_action_with_prediction
         in
@@ -641,6 +642,7 @@ struct
           population;
           environment;
           action_set;
+          do_exploration;
           best_action_with_prediction;
           previous;
         };
@@ -652,19 +654,21 @@ struct
     match !learner with
     | Ready_for_environment _ ->
         raise Expected_environment
-    | Ready_for_feedback { config; current_time; population; environment; action_set; best_action_with_prediction; previous } ->
+    | Ready_for_feedback { config; current_time; population; environment; action_set; do_exploration; best_action_with_prediction; previous } ->
         Log.debug (fun m ->
           m "provide_feedback: current_time=%d, #population=%d, numerosity=%d"
           current_time (Identifier_dict.length population.set) population.numerosity
         );
-        let Config.{ discount_factor; _ } = config in
+        let Config.{ discount_factor; do_ga_only_when_exploring; _ } = config in
         let population =
           match previous with
-          | Some { previous_environment; previous_action_set; previous_reward } ->
+          | Some { previous_environment; previous_action_set; previous_reward; previous_do_exploration } ->
               let max_prediction = snd (Lazy.force best_action_with_prediction) in
               let payoff = previous_reward +. discount_factor *. max_prediction in
               let (previous_action_set', population) = update_action_set ~config ~payoff previous_action_set population in
-              run_genetic_algorithm ~config ~current_time ~prediction:payoff previous_action_set' population previous_environment
+              if previous_do_exploration || not do_ga_only_when_exploring
+              then run_genetic_algorithm ~config ~current_time ~prediction:payoff previous_action_set' population previous_environment
+              else population
           | None ->
               population
         in
@@ -672,13 +676,18 @@ struct
           match is_final_step with
           | true ->
               let (action_set', population) = update_action_set ~config ~payoff:reward action_set population in
-              let population = run_genetic_algorithm ~config ~current_time ~prediction:reward action_set' population environment in
+              let population =
+                if do_exploration || not do_ga_only_when_exploring
+                then run_genetic_algorithm ~config ~current_time ~prediction:reward action_set' population environment
+                else population
+              in
               (population, None)
           | false ->
               let previous = {
                 previous_environment = environment;
                 previous_action_set = action_set;
                 previous_reward = reward;
+                previous_do_exploration = do_exploration;
               }
               in
               (population, Some previous)
@@ -686,7 +695,7 @@ struct
         learner := Ready_for_environment {
           config;
           current_time = current_time + 1;
-          population;
+          population = cull_population ~config population;
           previous;
         }
 

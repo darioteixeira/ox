@@ -23,6 +23,7 @@ type t = {
   min_actions : int option;
   do_offspring_subsumption : bool;
   do_action_set_subsumption : bool;
+  do_ga_only_when_exploring : bool;
   classifier_initialization : classifier_initialization;
 } [@@deriving yojson]
 
@@ -51,5 +52,6 @@ let default = {
   min_actions = None;
   do_offspring_subsumption = true;
   do_action_set_subsumption = true;
+  do_ga_only_when_exploring = true;
   classifier_initialization = classifier_initialization_default;
 }
