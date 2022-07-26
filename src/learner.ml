@@ -429,7 +429,7 @@ struct
       ~experience:0
       ~avg_action_set_size:1.
       ~numerosity:1
-      ~accuracy:1.
+      ~accuracy:1. (* Dummy value, because proper accuracy will be computed in {!update_classifier_accuracy}. *)
 
   (* Routine [GENERATE MATCH SET] from page 260.
      Unlike in the paper, for performance reasons we don't cull the population,
