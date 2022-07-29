@@ -44,6 +44,14 @@ end
 
 module List = ListLabels
 
+module Option = struct
+  include Option
+
+  let value_map ~default ~f = function
+    | None -> default
+    | Some v -> f v
+end
+
 module Result = struct
   include Result
 
