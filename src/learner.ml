@@ -62,13 +62,6 @@ struct
     previous_do_exploration : bool;
   } [@@deriving yojson]
 
-  type ready_for_environment = {
-    config : Config.t;
-    current_time : int;
-    population : population;
-    previous : previous option;
-  } [@@deriving yojson]
-
   type best_action_with_prediction = (Action.t * float) Lazy.t
 
   let best_action_with_prediction_to_yojson v =
@@ -78,32 +71,33 @@ struct
     [%derive.of_yojson: Action.t * float] yojson
     |> Result.map Lazy.from_val
 
-  type ready_for_feedback = {
-    config : Config.t;
-    current_time : int;
-    population : population;
+  type environment_payload = {
     environment: environment;
     action_set : Classifier.t Identifier_dict.t;
     do_exploration : bool;
     best_action_with_prediction : best_action_with_prediction;
-    previous : previous option;
   } [@@deriving yojson]
 
-  type ready_for =
-    | Ready_for_environment of ready_for_environment
-    | Ready_for_feedback of ready_for_feedback
+  type state =
+    | Awaiting_environment
+    | After_environment of environment_payload
+    | After_intermediate_feedback of environment_payload
     [@@deriving yojson]
 
-  type t = ready_for ref [@@deriving yojson]
+  type t = {
+    mutable config : Config.t;
+    mutable current_time : int;
+    mutable population : population;
+    mutable previous : previous option;
+    mutable state : state;
+  } [@@deriving yojson]
 
   type stats = {
     population_size : int;
     population_numerosity : int;
   }
 
-  exception Expected_environment
-
-  exception Expected_feedback
+  exception Wrong_state
 
   (************************************************************************************************)
   (* Logging and formatting.                                                                      *)
@@ -583,47 +577,38 @@ struct
 
   let create ~config =
     Log.debug (fun m -> m "create");
-    ref @@ Ready_for_environment {
+    {
       config;
       current_time = 0;
       population = { set = Identifier_dict.create Config.(config.max_population_size); numerosity = 0 };
       previous = None;
+      state = Awaiting_environment;
     }
 
-  let get_stats learner =
-    let stats_of_population { set; numerosity } = {
+  let get_stats { population = { set; numerosity }; _ } =
+    {
       population_size = Identifier_dict.length set;
       population_numerosity = numerosity;
     }
-    in
-    match !learner with
-    | Ready_for_feedback { population; _ } -> stats_of_population population
-    | Ready_for_environment { population; _ } -> stats_of_population population
 
-  let get_config learner =
-    Log.debug (fun m -> m "get_config");
-    match !learner with
-    | Ready_for_feedback { config; _ } -> config
-    | Ready_for_environment { config; _ } -> config
+  let get_config { config; _ } =
+    config
 
   let update_config ~config learner =
     Log.debug (fun m -> m "update_config");
-    match !learner with
-    | Ready_for_feedback ready_for_feedback ->
-        learner := Ready_for_feedback { ready_for_feedback with config }
-    | Ready_for_environment ready_for_environment ->
-        learner := Ready_for_environment { ready_for_environment with config }
+    learner.config <- config
 
   (* First part (lines 3-8) of routine [RUN EXPERIMENT] from page 260. *)
-  let provide_environment learner environment =
+  let provide_environment ({ config; current_time; population; state; _ } as learner) environment =
     Log.debug (fun m -> m "provide_environment");
-    match !learner with
-    | Ready_for_feedback _ ->
-        raise Expected_feedback
-    | Ready_for_environment { config; current_time; population; previous } ->
+    match state with
+    | After_environment _ ->
+        raise Wrong_state
+    | Awaiting_environment | After_intermediate_feedback _ ->
+        let current_time = current_time + 1 in
         Log.debug (fun m ->
           m "provide_environment: current_time=%d, #population=%d, numerosity=%d"
-          current_time (Identifier_dict.length population.set) population.numerosity
+            current_time (Identifier_dict.length population.set) population.numerosity
         );
         let (population, match_set) = generate_match_set ~config ~current_time population environment in
         let (num_predictions, predictions) = generate_predictions match_set in
@@ -635,73 +620,73 @@ struct
           | false -> Lazy.force best_action_with_prediction
         in
         let action_set = generate_action_set action match_set in
-        learner := Ready_for_feedback {
-          config;
-          current_time;
-          population;
-          environment;
-          action_set;
-          do_exploration;
-          best_action_with_prediction;
-          previous;
-        };
+        let state = After_environment { environment; action_set; do_exploration; best_action_with_prediction } in
+        learner.current_time <- current_time;
+        learner.population <- population;
+        learner.state <- state;
         action
 
-  (* Second part (lines 9-22) of routine [RUN EXPERIMENT] from page 260. *)
-  let provide_feedback ~reward ~is_final_step learner =
-    Log.debug (fun m -> m "provide_feedback: reward=%2.1f, is_final_step=%B" reward is_final_step);
-    match !learner with
-    | Ready_for_environment _ ->
-        raise Expected_environment
-    | Ready_for_feedback { config; current_time; population; environment; action_set; do_exploration; best_action_with_prediction; previous } ->
-        Log.debug (fun m ->
-          m "provide_feedback: current_time=%d, #population=%d, numerosity=%d"
-          current_time (Identifier_dict.length population.set) population.numerosity
-        );
-        let Config.{ discount_factor; do_ga_only_when_exploring; _ } = config in
-        let population =
-          match previous with
-          | Some { previous_environment; previous_action_set; previous_reward; previous_do_exploration } ->
-              let max_prediction = snd (Lazy.force best_action_with_prediction) in
-              let payoff = previous_reward +. discount_factor *. max_prediction in
-              let (previous_action_set', population) = update_action_set ~config ~payoff previous_action_set population in
-              if previous_do_exploration || not do_ga_only_when_exploring
-              then run_genetic_algorithm ~config ~current_time ~prediction:payoff previous_action_set' population previous_environment
-              else population
-          | None ->
-              population
-        in
-        let (population, previous) =
-          match is_final_step with
-          | true ->
-              let (action_set', population) = update_action_set ~config ~payoff:reward action_set population in
-              let population =
-                if do_exploration || not do_ga_only_when_exploring
-                then run_genetic_algorithm ~config ~current_time ~prediction:reward action_set' population environment
-                else population
-              in
-              (population, None)
-          | false ->
-              let previous = {
-                previous_environment = environment;
-                previous_action_set = action_set;
-                previous_reward = reward;
-                previous_do_exploration = do_exploration;
-              }
-              in
-              (population, Some previous)
-        in
-        learner := Ready_for_environment {
-          config;
-          current_time = current_time + 1;
-          population = cull_population ~config population;
-          previous;
-        }
+  let apply_previous_step ~config current_time best_action_with_prediction population previous =
+    let Config.{ discount_factor; do_ga_only_when_exploring; _ } = config in
+    let { previous_environment; previous_action_set; previous_reward; previous_do_exploration } = previous in
+    match previous_do_exploration || not do_ga_only_when_exploring with
+    | true ->
+        let max_prediction = snd (Lazy.force best_action_with_prediction) in
+        let payoff = previous_reward +. discount_factor *. max_prediction in
+        let (previous_action_set', population) = update_action_set ~config ~payoff previous_action_set population in
+        run_genetic_algorithm ~config ~current_time ~prediction:payoff previous_action_set' population previous_environment
+    | false ->
+        population
 
-  let iterate learner environment handler =
-    Log.debug (fun m -> m "iterate");
-    let action = provide_environment learner environment in
-    let (reward, is_final_step) = handler action in
-    provide_feedback ~reward ~is_final_step learner;
-    (action, reward, is_final_step)
+  (* Second part (lines 9-22) of routine [RUN EXPERIMENT] from page 260.
+     Note that we split into two separate functions the code for intermediate and final feedback.
+     This function pertains only to the former. *)
+  let provide_intermediate_feedback ~reward ({ config; current_time; population; previous; state } as learner) =
+    match state with
+    | Awaiting_environment | After_intermediate_feedback _ ->
+        raise Wrong_state
+    | After_environment ({ environment; action_set; do_exploration; best_action_with_prediction } as environment_payload) ->
+        Log.debug (fun m ->
+          m "provide_intermediate_feedback: current_time=%d, reward=%2.1f, #population=%d, numerosity=%d"
+            current_time reward (Identifier_dict.length population.set) population.numerosity
+        );
+        let population = Option.value_map ~default:population ~f:(apply_previous_step ~config current_time best_action_with_prediction population) previous in
+        let previous = {
+          previous_environment = environment;
+          previous_action_set = action_set;
+          previous_reward = reward;
+          previous_do_exploration = do_exploration;
+        }
+        in
+        learner.population <- cull_population ~config population;
+        learner.previous <- Some previous;
+        learner.state <- After_intermediate_feedback environment_payload
+
+  (* Second part (lines 9-22) of routine [RUN EXPERIMENT] from page 260.
+     Note that we split into two separate functions the code for intermediate and final feedback.
+     This function pertains only to the latter. *)
+  let provide_final_feedback ~reward ({ config; current_time; population; previous; state } as learner) =
+    let actually_provide_final_feedback { environment; action_set; do_exploration; best_action_with_prediction } =
+      Log.debug (fun m ->
+        m "provide_final_feedback: current_time=%d, reward=%2.1f, #population=%d, numerosity=%d"
+          current_time reward (Identifier_dict.length population.set) population.numerosity
+      );
+      let population = Option.value_map ~default:population ~f:(apply_previous_step ~config current_time best_action_with_prediction population) previous in
+      let (action_set', population) = update_action_set ~config ~payoff:reward action_set population in
+      let population =
+        if do_exploration || not Config.(config.do_ga_only_when_exploring)
+        then run_genetic_algorithm ~config ~current_time ~prediction:reward action_set' population environment
+        else population
+      in
+      learner.population <- cull_population ~config population;
+      learner.previous <- None;
+      learner.state <- Awaiting_environment
+    in
+    match state with
+    | Awaiting_environment ->
+        raise Wrong_state
+    | After_environment environment_payload ->
+        actually_provide_final_feedback environment_payload
+    | After_intermediate_feedback environment_payload ->
+        actually_provide_final_feedback environment_payload
 end
