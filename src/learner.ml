@@ -501,7 +501,7 @@ struct
     let find_best best (action, prediction) =
       match best with
       | None -> Some (action, prediction)
-      | Some (_, prediction') when prediction' < prediction -> Some (action, prediction)
+      | Some (_, prediction') when prediction > prediction' -> Some (action, prediction)
       | Some _ -> best
     in
     Option.get @@ List.fold_left ~f:find_best ~init:None predictions
