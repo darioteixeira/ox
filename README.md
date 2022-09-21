@@ -1,6 +1,8 @@
 Ox
 ==
 
+![Ox logo](logo/ox_logo.png?raw=true "Ox logo")
+
 OCaml implementation of the XCS learning classifier system[^1][^2].
 
 
