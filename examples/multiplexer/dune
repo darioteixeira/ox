@@ -1,0 +1,4 @@
+(executable
+  (name multiplexer)
+  (libraries domainslib fmt logs ox ox_multicore yojson)
+)
