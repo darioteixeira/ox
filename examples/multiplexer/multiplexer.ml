@@ -106,14 +106,7 @@ let run_batch ~selector_width ~batch_num ~batch_size ~switchover_iteration confi
   Format.printf "batch_num=%4d, avg_reward=%6.1f, population=(%d/%d)\n%!" batch_num avg_reward population_size population_numerosity
 
 let main ~selector_width ~num_batches ~batch_size ~switchover_iteration =
-  let config = Config.{ default with
-    max_population_size = 200_000;
-    mutation_probability = 0.1;
-    learning_rate = 0.15;
-    do_offspring_subsumption = true;
-    do_action_set_subsumption = true;
-  }
-  in
+  let config = Config.{ default with max_population_size = 10_000 } in
   let learner = Learner.create ~config in
   for batch_num = 0 to num_batches - 1 do
     run_batch ~selector_width ~batch_num ~batch_size ~switchover_iteration config learner
@@ -123,4 +116,4 @@ let () =
   Random.self_init ();
   Logs.set_reporter (Logs.format_reporter ());
   Logs.Src.set_level Learner.logs_src (Some Info);
-  main ~selector_width:5 ~num_batches:100 ~batch_size:10_000 ~switchover_iteration:300_000
+  main ~selector_width:4 ~num_batches:50 ~batch_size:10_000 ~switchover_iteration:300_000
