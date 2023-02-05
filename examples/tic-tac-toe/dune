@@ -1,4 +1,4 @@
 (executable
   (name tic_tac_toe)
-  (libraries domainslib fmt logs ox ox_multicore yojson)
+  (libraries domainslib fmt logs ox yojson)
 )

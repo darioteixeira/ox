@@ -44,7 +44,7 @@ end
    of classifiers. In this case we want to parallelise the work across four
    different CPU cores using OCaml 5 and Domainslib.
 *)
-module Hashtbl = Ox_multicore.Multicore_dict.Make (struct
+module Hashtbl = Ox.Multicore_dict.Make (struct
   let num_domains = 4
   let task_pool = Domainslib.Task.setup_pool ~num_domains:(num_domains - 1) ()
 end)

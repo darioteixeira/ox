@@ -3,7 +3,7 @@ module Task = Domainslib.Task
 
 include Multicore_dict_intf
 
-module Make (C : MULTICORE_CONFIG) (H : Ox.Dict.HASHABLE) : Ox.Dict.IMPL with type key = H.t = struct
+module Make (C : MULTICORE_CONFIG) (H : Dict.HASHABLE) : Dict.IMPL with type key = H.t = struct
   module Monotbl = MoreLabels.Hashtbl.Make (H)
 
   type key = H.t [@@deriving yojson]

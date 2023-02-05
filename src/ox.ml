@@ -16,5 +16,8 @@ module Learner = Learner
 module Singlecore_dict = Singlecore_dict
 (** {!Dict} implementation optimised for single core programs (or for OCaml < 5). *)
 
+module Multicore_dict = Multicore_dict
+(** {!Dict} implementation optimised for multi core programs (only for OCaml >= 5). *)
+
 module Sensors = Sensors
 (** The [Sensors] module defines a signature used to parameterise {!Learner}. *)

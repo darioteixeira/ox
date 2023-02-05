@@ -26,24 +26,20 @@ well suited to the shared-memory parallelism introduced by OCaml 5.
 Features
 --------
 
- * (Optional) multicore support with OCaml 5.
+ * Multicore support with OCaml 5.
  * Configurable types for the *sensors* (not just the usual boolean).
  * All XCS hyper-parameters are configurable.
 
 Building
 --------
 
-Assuming you are running OPAM >= 2.1, you can run the commands below to build
-Ox using the first beta version of OCaml 5 under a local switch (beware that
-these instructions will **not** work under older versions of OPAM). Note that
-strictly speaking, the main package of Ox (under the `src` directory) can also
-be built with OCaml < 5. It's only the multicore-enabling subpackage (under
-the `src_multicore` directory) that requires OCaml 5. Nevertheless, in this
-README we will assume you are running OCaml 5.
+Ox requires (at least) OCaml 5. After cloning this repository or downloading
+the package, change the working directory to the root of the project and run
+the following commands to build Ox under a local switch:
 
 ```
 opam update
-opam switch create . 5.0.0~beta1 --no-install
+opam switch create . 5.0.0 --no-install
 eval $(opam env)
 opam install . --deps-only --with-test
 make build
@@ -73,12 +69,7 @@ Anyway, typical usage starts with the creation of the Ox learner module by
 invoking the `Ox.Learner.Make` functor. This functor takes three parameters:
 the definition of the *sensors* (ie, the input), the definition of the
 *actions* (ie, the output), and finally, the definition of the data structure
-used to hold the population of classifiers. Note that the final parameter
-may seem a bit superfluous at first -- why should it be your responsibility
-as a user of the library to worry about this? -- but it exists for the sole
-purpose of supporting both single core and multicore applications without
-forcing the core Ox library to depend on OCaml 5 (please see the section below
-for more details).
+used to hold the population of classifiers.
 
 Once you've created the learner module -- let's call it `Learner` -- you
 must invoke the `Learner.create` function to create a new instance of a
@@ -119,24 +110,19 @@ You may also build it locally by running `make doc`.
 Single core vs multicore
 ------------------------
 
-In the current version of Ox, multicore support is entirely optional, and the
-core Ox library is actually compatible with OCaml 4.x. This was achieved by
-adding a third parameter to the functor `Ox.Learner.Make` that instantiates a
-learner.
-
-If you are running OCaml 4.x or don't require multicore support, you can just
-provide `Ox.Singlecore_dict.Make` as the third argument to the functor (as you
-may have guessed from its name, the third argument is itself a functor, though
-you probably don't need to worry about this detail).
+If you don't require multicore support, you can just provide
+`Ox.Singlecore_dict.Make` as the third argument to the functor (as you may have
+guessed from its name, the third argument is itself a functor, though you
+probably don't need to worry about this detail).
 
 If you want to leverage the multicore support, then you need to create that
-third argument using the `Ox_multicore.Multicore_dict.Make` functor. You'll
-need to provide the number of domains and the task pool to be used by Ox.
-In the example below, we actually create a new task pool, though you
-may of course also reuse an existing one:
+third argument using the `Ox.Multicore_dict.Make` functor. You'll need to
+provide the number of domains and the task pool to be used by Ox.  In the
+example below, we actually create a new task pool, though you may of course
+also reuse an existing one:
 
 ```ocaml
-module Dict = Ox_multicore.Multicore_dict.Make (struct
+module Dict = Ox.Multicore_dict.Make (struct
   let num_domains = 4
   let task_pool = Domainslib.Task.setup_pool ~num_domains:(num_domains - 1) ()
 end)
