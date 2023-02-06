@@ -76,7 +76,7 @@ some configuration options relevant only to the multi-core version.
 
 Once you've created the learner module -- let's call it `Learner` -- you
 must invoke the `Learner.create` function to create a new instance of a
-learner. What typically comes next dependes on whether you are using the
+learner. What typically comes next depends on whether you are using the
 library for classification (supervised learning) or for a reinforcement
 learning problem. The former are single-step problems, whereas the latter
 are usually (though not necessarily) multi-step problems.
@@ -109,6 +109,23 @@ API documentation
 
 The API is documented and available online [here](https://darioteixeira.github.io/ox/apidoc/index.html).
 You may also build it locally by running `make doc`.
+
+Differences between Ox and canonical XCS
+----------------------------------------
+
+Ox is a mostly faithful implementation of the algorithmic description of XCS
+given in [^2]. The biggest deviation concerns the population size: Ox allows
+for the population to increase beyond the configured maximum size in
+intermediate computations; the population is only culled to the prescribed
+limit when feedback is given either with
+`Learner.provide_intermediate_feedback` or `Learner.provide_final_feedback`.
+Performance is the primary motivation behind this deviation: culling is an
+expensive operation, and since Ox uses an hash table to store the population of
+classifiers, we can treat the maximum population size as a soft limit which is
+perfectly fine to step over during intermediate computations. In contrast, the
+population size is a hard limit for implementations of XCS based on a
+fixed-length array, which explains their need for much more frequent expensive
+cullings.
 
 [^1]: [*Classifier Fitness Based on Accuracy*, by Stewart W. Wilson](https://doi.org/10.1162/evco.1995.3.2.149)
 [^2]: [*An Algorithmic Description of XCS*, by Martin V. Butz and Stewart W. Wilson](https://dx.doi.org/10.1007/s005000100111)
