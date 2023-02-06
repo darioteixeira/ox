@@ -690,3 +690,9 @@ struct
     | After_intermediate_feedback environment_payload ->
         actually_provide_final_feedback environment_payload
 end
+
+module Make_singlecore (Sensors_def : Sensors.DEF) (Action : Action.S) : S with type sensors = Sensors_def.sensors and type action = Action.t =
+  Make (Sensors_def) (Action) (Singlecore_dict.Make)
+
+module Make_multicore (Sensors_def : Sensors.DEF) (Action : Action.S) (MConfig : Multicore_config.S) : S with type sensors = Sensors_def.sensors and type action = Action.t =
+  Make (Sensors_def) (Action) (Multicore_dict.Make (MConfig))

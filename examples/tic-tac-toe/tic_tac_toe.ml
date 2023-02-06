@@ -39,25 +39,19 @@ module Action = struct
   let all = List.init ~len:9 ~f:Fun.id
 end
 
-(* This module is the third and final argument to the functor that creates
-   the Ox learner. It defines the data structure used to hold the population
-   of classifiers. In this case we want to parallelise the work across four
-   different CPU cores using OCaml 5 and Domainslib.
-*)
-module Hashtbl = Ox.Multicore_dict.Make (struct
+module MConfig : Ox.Multicore_config.S = struct
   let num_domains = 4
   let task_pool = Domainslib.Task.setup_pool ~num_domains:(num_domains - 1) ()
-end)
+end
 
-(* Uncomment the line below (and comment out the module definition immediately above)
-   to use the single core version of the Ox learner.
-*)
-(* module Dict = Ox.Singlecore_dict.Make *)
+module Learner = Ox.Learner.Make_multicore (Sensors_def) (Action) (MConfig)
 
-(* Create the learner module by invoking the [Ox.Learner.Make] functor using
-   the modules defined above as parameters.
+(* Uncomment the line below (and comment out the functor application immediately above)
+   to use the single-core version of the Ox learner.
 *)
-module Learner = Ox.Learner.Make (Sensors_def) (Action) (Hashtbl)
+(*
+module Learner = Ox.Learner.Make_singlecore (Sensors_def) (Action)
+*)
 
 type mark = [ `Cross | `Nought ]
 

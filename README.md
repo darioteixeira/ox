@@ -17,7 +17,7 @@ classifier systems, and this project is a pure-OCaml implementation that
 closely follows (with some minor deviations) the algorithmic description
 of XCS given in [^2].
 
-Of note is that the project can (optionally) take advantage of the multicore
+Of note is that the project can (optionally) take advantage of the multi-core
 support offered by OCaml 5. By a long margin, rule matching is the most
 computationally demanding component of a learning classifier system.
 Fortunately it also happens to be an embarrassingly parallel problem that is
@@ -66,10 +66,13 @@ examples for a more through understanding of how the library is meant to be
 used.
 
 Anyway, typical usage starts with the creation of the Ox learner module by
-invoking the `Ox.Learner.Make` functor. This functor takes three parameters:
-the definition of the *sensors* (ie, the input), the definition of the
-*actions* (ie, the output), and finally, the definition of the data structure
-used to hold the population of classifiers.
+invoking either the `Ox.Learner.Make_singlecore` functor (for the single-core
+version of the learner), or the `Ox.Learner.Make_multicore` functor (for the
+multi-core version of the learner). The former takes two parameters:
+the definition of the *sensors* (ie, the input) and the definition of the
+*actions* (ie, the output). The latter takes three parameters: the first two
+are the same as in the single-core version, and the third parameter defines
+some configuration options relevant only to the multi-core version.
 
 Once you've created the learner module -- let's call it `Learner` -- you
 must invoke the `Learner.create` function to create a new instance of a
@@ -106,33 +109,6 @@ API documentation
 
 The API is documented and available online [here](https://darioteixeira.github.io/ox/apidoc/index.html).
 You may also build it locally by running `make doc`.
-
-Single core vs multicore
-------------------------
-
-If you don't require multicore support, you can just provide
-`Ox.Singlecore_dict.Make` as the third argument to the functor (as you may have
-guessed from its name, the third argument is itself a functor, though you
-probably don't need to worry about this detail).
-
-If you want to leverage the multicore support, then you need to create that
-third argument using the `Ox.Multicore_dict.Make` functor. You'll need to
-provide the number of domains and the task pool to be used by Ox.  In the
-example below, we actually create a new task pool, though you may of course
-also reuse an existing one:
-
-```ocaml
-module Dict = Ox.Multicore_dict.Make (struct
-  let num_domains = 4
-  let task_pool = Domainslib.Task.setup_pool ~num_domains:(num_domains - 1) ()
-end)
-```
-
-(Note that for Ox, `num_domains` declares the **total** number of domains,
-including the current one. In contrast, in the current version of
-`Domainslib.Task.setup_pool`, the `num_domains` argument is to be interpreted
-as the number of **additional** domains. Yes, this is confusing, but the APIs
-are still in flux.)
 
 [^1]: [*Classifier Fitness Based on Accuracy*, by Stewart W. Wilson](https://doi.org/10.1162/evco.1995.3.2.149)
 [^2]: [*An Algorithmic Description of XCS*, by Martin V. Butz and Stewart W. Wilson](https://dx.doi.org/10.1007/s005000100111)
