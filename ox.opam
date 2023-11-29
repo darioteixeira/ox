@@ -2,8 +2,8 @@
 opam-version: "2.0"
 version: "1.0~alpha1"
 synopsis: "OCaml implementation of the XCS learning classifier system"
-maintainer: ["Dario Teixeira <dario.teixeira@nleyten.com>"]
-authors: ["Dario Teixeira <dario.teixeira@nleyten.com>"]
+maintainer: ["Dario Teixeira <dario.teixeira@yahoo.com>"]
+authors: ["Dario Teixeira <dario.teixeira@yahoo.com>"]
 license: "ISC"
 homepage: "https://github.com/darioteixeira/ox"
 bug-reports: "https://github.com/darioteixeira/ox/issues"
